@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      String         @id @default(uuid())
+  name    String
+  role    Role
+  reports SessionReport[]
+}
+
+model Group {
+  id      String         @id @default(uuid())
+  name    String
+  reports SessionReport[]
+}
+
+model SessionReport {
+  id                  String   @id @default(uuid())
+  date                DateTime
+  group               Group    @relation(fields: [groupId], references: [id])
+  groupId             String
+  createdBy           User     @relation(fields: [createdById], references: [id])
+  createdById         String
+  warmingUp           String
+  sportActivity       String
+  bijzonderheden      String?
+  groepssfeer         String?
+  interventies        String?
+  incidenten          String?
+  afsprakenVoorMorgen String?
+  createdAt           DateTime @default(now())
+  incidents           Incident[]
+}
+
+model Incident {
+  id          String        @id @default(uuid())
+  description String
+  report      SessionReport? @relation(fields: [reportId], references: [id])
+  reportId    String?
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  SPORTDOCENT
+  GROEPSLEIDER
+  ADMIN
+}
