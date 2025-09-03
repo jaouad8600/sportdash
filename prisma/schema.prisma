@@ -1,0 +1,94 @@
+// Prisma schema for sport dashboard
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DOCENT
+  GL
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role
+  groups    Group[]  @relation("UserGroups")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions  Session[] @relation("DocentSessions")
+  incidents Incident[] @relation("UserIncidents")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  status    String   @default("active")
+  users     User[]   @relation("UserGroups")
+  sessions  Session[]
+  bundles   DailyBundle[]
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  groupId       String
+  group         Group    @relation(fields: [groupId], references: [id])
+  date          DateTime
+  docentId      String
+  docent        User     @relation("DocentSessions", fields: [docentId], references: [id])
+  headcount     Int
+  warmup        String?
+  activity      String?
+  cooldown      String?
+  atmosphere    String?
+  interventions String?
+  notes         String?
+  planTomorrow  String?
+  incidents     Incident[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Incident {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id])
+  youthFullName String
+  time          DateTime
+  description   String
+  heard         Boolean
+  measure       String
+  location      String?
+  followUp      String?
+  createdById   String
+  createdBy     User     @relation("UserIncidents", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DailyBundle {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
+  date      DateTime
+  htmlPath  String?
+  pdfPath   String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+}

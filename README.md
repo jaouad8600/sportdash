@@ -1,26 +1,35 @@
-# Lama Dev School Management Dashboard
+# Sportmoment Dashboard
 
-## Getting Started
+Deze applicatie is een basis voor het registreren van sportmomenten, rapportages en incidenten binnen een instelling.
 
-First, run the development server:
+## Installatie
+
+1. Installeer dependencies en genereer de database:
+
+```bash
+npm install
+npx prisma migrate dev --name init
+npm run seed
+```
+
+2. Start de ontwikkelserver:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+De applicatie is beschikbaar op [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Accounts
 
-## Learn More
+Met het seed-script worden voorbeeldgebruikers aangemaakt:
 
-To learn more about Next.js, take a look at the following resources:
+- admin@example.com / admin
+- gl@example.com / gl
+- docent@example.com / docent
 
-- [Lama Dev Youtube Channel](https://youtube.com/lamadev) 
-- [Next.js](https://nextjs.org/learn)
+## Features
+
+- Inloggen via NextAuth (credentials).
+- Aanmaken en ophalen van sessies via `/api/sessions`.
+- Incidenten registreren via `/api/incidents`.
