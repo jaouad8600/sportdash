@@ -4,7 +4,7 @@ import path from "path";
 
 const F_MUT = path.join(process.cwd(), "data", "sportmutaties.json");
 
-async function getPrisma(): Promise<any|null> {
+async function getPrisma(): Promise<any | null> {
   try {
     const mod = await import("@prisma/client");
     const prisma = new (mod as any).PrismaClient();
@@ -15,12 +15,12 @@ async function getPrisma(): Promise<any|null> {
   }
 }
 
-export async function POST(_: Request, ctx: { params: { id: string } }) {
-  const id = ctx.params.id;
+export async function POST(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
   const prisma = await getPrisma();
   const now = new Date();
-  let body:any = {};
-  try { body = await _.json(); } catch {}
+  let body: any = {};
+  try { body = await _.json(); } catch { }
   const reason = body?.reason ?? body?.reden ?? "gearchiveerd";
 
   if (prisma?.sportMutatie) {
@@ -30,22 +30,22 @@ export async function POST(_: Request, ctx: { params: { id: string } }) {
         data: { archivedAt: now, archivedReason: reason },
       });
       return NextResponse.json(upd, { status: 200 });
-    } catch (e:any) {
+    } catch (e: any) {
       console.error("[mutaties][archive][prisma]", e);
     }
   }
 
   // File fallback
   try {
-    const raw = await fs.readFile(F_MUT, "utf8").catch(()=> "[]");
+    const raw = await fs.readFile(F_MUT, "utf8").catch(() => "[]");
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return NextResponse.json({ error: "store damaged" }, { status: 500 });
-    const i = arr.findIndex((x:any)=> x?.id === id);
-    if (i<0) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-    arr[i] = { ...(arr[i]||{}), archivedAt: now.toISOString(), archivedReason: reason };
+    const i = arr.findIndex((x: any) => x?.id === id);
+    if (i < 0) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+    arr[i] = { ...(arr[i] || {}), archivedAt: now.toISOString(), archivedReason: reason };
     await fs.writeFile(F_MUT, JSON.stringify(arr, null, 2));
     return NextResponse.json(arr[i], { status: 200 });
-  } catch (e:any) {
+  } catch (e: any) {
     return NextResponse.json({ error: e?.message || "error" }, { status: 500 });
   }
 }

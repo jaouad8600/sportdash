@@ -58,10 +58,10 @@ export default function ProgramsPage() {
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         const program: Program = {
+            ...newProgram as Program,
             id: Math.random().toString(36).substr(2, 9),
             exercises: 0,
-            tags: ['Nieuw'],
-            ...newProgram as Program
+            tags: ['Nieuw']
         };
         setPrograms([...programs, program]);
         setIsModalOpen(false);

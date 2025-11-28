@@ -1,40 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Group } from "@/lib/types";
-import { getGroups, saveGroups } from "@/lib/store";
+// Legacy component - uses non-existent store functions
+// TODO: Reimplement using Prisma/API routes or remove if not needed
 
 export default function Groepen() {
-  const [groups, setGroups] = useState<Group[]>([]);
-
-  useEffect(() => {
-    setGroups(getGroups());
-  }, []);
-
-  function addGroup(name: string) {
-    const newGroup: Group = {
-      id: String(Date.now()),
-      name,
-      state: "Groen",
-    };
-    const updated = [...groups, newGroup];
-    setGroups(updated);
-    saveGroups(updated);
-  }
-
   return (
-    <div>
-      <h1>Groepen</h1>
-      <ul>
-        {groups.map((g) => (
-          <li key={g.id}>
-            {g.name} ({g.state})
-          </li>
-        ))}
-      </ul>
-      <button className="btn" onClick={() => addGroup("Nieuwe groep")}>
-        + Voeg toe
-      </button>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Groepen</h1>
+      <p className="text-gray-500">
+        Dit component is verouderd en moet opnieuw geïmplementeerd worden met Prisma.
+      </p>
+      <p className="text-sm text-gray-400 mt-2">
+        Zie /groepen voor de nieuwe groepen pagina.
+      </p>
     </div>
   );
 }

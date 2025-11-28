@@ -87,9 +87,8 @@ export default function MutatiesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sportmutaties</h1>
         <button
-          className="btn btn-primary btn"
+          className="btn btn-primary bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded"
           onClick={() => setSel({ status: "open" })}
-          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded"
         >
           + Nieuwe mutatie
         </button>
@@ -117,9 +116,8 @@ export default function MutatiesPage() {
               <tr key={r.id} className="border-b">
                 <td className="px-3 py-2">
                   <button
-                    className="btn btn-primary btn"
+                    className="btn btn-primary text-left text-blue-700 hover:underline"
                     onClick={() => setSel(r)}
-                    className="text-left text-blue-700 hover:underline"
                   >
                     {r.titel}
                   </button>
@@ -131,16 +129,14 @@ export default function MutatiesPage() {
                 <td className="px-3 py-2">
                   <div className="flex gap-2 justify-end">
                     <button
-                      className="btn btn-primary btn"
+                      className="btn btn-primary text-blue-600 hover:underline"
                       onClick={() => setSel(r)}
-                      className="text-blue-600 hover:underline"
                     >
                       Bewerken
                     </button>
                     <button
-                      className="btn btn-primary btn"
+                      className="btn btn-primary text-rose-600 hover:underline"
                       onClick={() => remove(r.id)}
-                      className="text-rose-600 hover:underline"
                     >
                       Verwijderen
                     </button>
@@ -218,15 +214,14 @@ export default function MutatiesPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button
-                className="btn btn-primary btn"
+                className="btn btn-primary px-3 py-1.5 rounded border"
                 onClick={() => setSel(undefined)}
-                className="px-3 py-1.5 rounded border"
               >
                 Annuleren
               </button>
               <button
                 onClick={save}
-                className="btn btn-primary px-3 py-1.5 rounded bg-green-600 text-white btn"
+                className="btn btn-primary px-3 py-1.5 rounded bg-green-600 text-white"
               >
                 Opslaan
               </button>

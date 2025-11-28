@@ -14,7 +14,13 @@ export async function POST(request: Request) {
             description,
             alarmPressed,
             afterCare,
-            date
+            date,
+            staffShare,
+            deescalation,
+            returnProcess,
+            debriefing,
+            restorativeAction,
+            teamLeaderContact
         } = body;
 
         if (!description || !groupId) {
@@ -33,6 +39,12 @@ export async function POST(request: Request) {
                 afterCare: afterCare || null,
                 date: date ? new Date(date) : new Date(),
                 authorId: userId,
+                staffShare: staffShare || null,
+                deescalation: deescalation || null,
+                returnProcess: returnProcess || null,
+                debriefing: debriefing || null,
+                restorativeAction: restorativeAction || null,
+                teamLeaderContact: teamLeaderContact || null,
             },
         });
 

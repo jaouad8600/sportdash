@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { loadLogs, saveLogs, LogEntry } from "@/lib/clientStore";
 import { format } from "date-fns";
-import nl from "date-fns/locale/nl";
+import { nl } from "date-fns/locale";
 const dl = (name: string, data: string, type: string) => {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([data], { type }));
@@ -17,8 +17,9 @@ export default function Logging() {
     if (!text.trim()) return;
     const entry: LogEntry = {
       id: crypto.randomUUID(),
-      ts: new Date().toISOString(),
-      text: text.trim(),
+      timestamp: new Date().toISOString(),
+      message: text.trim(),
+      level: "info",
     };
     const next = [entry, ...list];
     saveLogs(next);
@@ -31,7 +32,7 @@ export default function Logging() {
     setList(next);
   }
   const csv = useMemo(() => {
-    const rows = [["ts", "text"], ...list.map((l) => [l.ts, l.text])];
+    const rows = [["timestamp", "message"], ...list.map((l) => [l.timestamp, l.message])];
     return rows
       .map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(","))
       .join("\n");
@@ -48,13 +49,12 @@ export default function Logging() {
           placeholder="Korte notitie..."
         ></textarea>
         <div className="flex gap-2">
-          <button onClick={add} className="btn btn-primary px-3 py-2 rounded-xl border btn">
+          <button onClick={add} className="btn btn-primary px-3 py-2 rounded-xl border">
             Opslaan
           </button>
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border"
             onClick={() => dl("logging.csv", csv, "text/csv")}
-            className="px-3 py-2 rounded-xl border"
           >
             Exporteer CSV
           </button>
@@ -73,14 +73,13 @@ export default function Logging() {
             {list.map((l) => (
               <tr key={l.id} className="border-t">
                 <td className="p-2">
-                  {format(new Date(l.ts), "d MMM HH:mm", { locale: nl })}
+                  {format(new Date(l.timestamp), "d MMM HH:mm", { locale: nl })}
                 </td>
-                <td className="p-2 whitespace-pre-wrap">{l.text}</td>
+                <td className="p-2 whitespace-pre-wrap">{l.message}</td>
                 <td className="p-2 text-right">
                   <button
-                    className="btn btn-primary btn"
+                    className="btn btn-primary px-2 py-1 rounded-lg border"
                     onClick={() => remove(l.id)}
-                    className="px-2 py-1 rounded-lg border"
                   >
                     Verwijder
                   </button>

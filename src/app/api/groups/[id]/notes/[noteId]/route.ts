@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 // PUT /api/groups/[id]/notes/[noteId] - Update a note
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string; noteId: string } }
+    { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
     try {
-        const { noteId } = params;
+        const { noteId } = await params;
         const body = await request.json();
         const { content } = body;
 
@@ -36,10 +36,10 @@ export async function PUT(
 // DELETE /api/groups/[id]/notes/[noteId] - Delete a note
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string; noteId: string } }
+    { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
     try {
-        const { noteId } = params;
+        const { noteId } = await params;
 
         await prisma.note.delete({
             where: { id: noteId },
@@ -58,10 +58,10 @@ export async function DELETE(
 // PATCH /api/groups/[id]/notes/[noteId] - Archive/unarchive a note
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string; noteId: string } }
+    { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
     try {
-        const { noteId } = params;
+        const { noteId } = await params;
         const body = await request.json();
         const { archived } = body;
 

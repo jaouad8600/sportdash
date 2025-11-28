@@ -15,6 +15,7 @@ export default function BackupPage() {
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingFull, setCreatingFull] = useState(false);
 
   const fetchBackups = async () => {
     setLoading(true);
@@ -52,6 +53,26 @@ export default function BackupPage() {
     }
   };
 
+  const handleCreateFullBackup = async () => {
+    setCreatingFull(true);
+    try {
+      const res = await fetch("/api/backups/full", { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        alert(`✅ Volledige backup succesvol aangemaakt!\n\nBestand: ${data.filename}\nGrootte: ${data.sizeMB} MB`);
+        await fetchBackups();
+      } else {
+        alert(`❌ Volledige backup mislukt\n\n${data.details || data.error}`);
+      }
+    } catch (error) {
+      console.error("Error creating full backup", error);
+      alert("❌ Er is een fout opgetreden bij het maken van de volledige backup");
+    } finally {
+      setCreatingFull(false);
+    }
+  };
+
   const handleDelete = async (filename: string) => {
     if (!confirm(`Weet je zeker dat je ${filename} wilt verwijderen?`)) return;
 
@@ -82,13 +103,22 @@ export default function BackupPage() {
           <h1 className="text-2xl font-bold text-gray-900">Systeem Backups</h1>
           <p className="text-gray-500">Beheer database backups en snapshots.</p>
         </div>
-        <Button
-          onClick={handleCreateBackup}
-          disabled={creating}
-          className="bg-brand-600 text-white hover:bg-brand-700"
-        >
-          {creating ? "Bezig met maken..." : "Nieuwe Backup Maken"}
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={handleCreateBackup}
+            disabled={creating || creatingFull}
+            className="bg-brand-600 text-white hover:bg-brand-700"
+          >
+            {creating ? "Bezig..." : "Database Backup"}
+          </Button>
+          <Button
+            onClick={handleCreateFullBackup}
+            disabled={creating || creatingFull}
+            className="bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-900/20"
+          >
+            {creatingFull ? "Bezig met volledige backup..." : "🗂️ Volledige Backup (Project + Database)"}
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

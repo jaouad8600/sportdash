@@ -61,3 +61,41 @@ To learn more about Next.js, take a look at the following resources:
 
 - [Lama Dev Youtube Channel](https://youtube.com/lamadev)
 - [Next.js](https://nextjs.org/learn)
+
+## Backupsysteem (SportDash)
+
+SportDash beschikt over een ingebouwd backupsysteem dat volledige projectarchieven maakt (code + database + config).
+
+### Opslag
+Backups worden opgeslagen in de map `backups/` in de root van het project. Deze map wordt genegeerd door Git om te voorkomen dat backups in de versiebeheergeschiedenis terechtkomen.
+
+### Inhoud van een backup
+Een backup is een `.tgz` archief en bevat:
+- Broncode (`src/`, `app/`, `components/`, etc.)
+- Configuratiebestanden (`package.json`, `prisma/schema.prisma`, etc.)
+- Database (`prisma/dev.db`)
+- Migraties en seeds
+
+Mappen zoals `node_modules`, `.next`, en `.git` worden **niet** opgenomen om de bestandsgrootte beperkt te houden.
+
+### Gebruik
+
+#### Via Dashboard
+Ga naar **Instellingen > Back-up** (of `/back-up`).
+- **Lijst bekijken:** Zie alle beschikbare backups met datum en grootte.
+- **Nieuwe backup:** Klik op "Nieuwe Backup" om direct een backup te maken.
+- **Downloaden:** Klik op het download-icoon naast een backup om het `.tgz` bestand te downloaden.
+
+#### Via Terminal
+Je kunt ook handmatig een backup maken via de terminal:
+
+```bash
+npm run backup
+```
+
+#### Automatiseren (Cron)
+Om backups automatisch te laten draaien (bijvoorbeeld elke nacht om 03:00), kun je een cronjob instellen op de server:
+
+```bash
+0 3 * * * cd /pad/naar/sportdash && npm run backup >> /pad/naar/sportdash/backups/cron.log 2>&1
+```

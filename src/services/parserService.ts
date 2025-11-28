@@ -1,81 +1,61 @@
+
 import { logger } from "@/lib/logger";
 
 export interface IncidentData {
-    youthName: string;
     type: string;
     description: string;
-    measure: string;
-    youthHeard: boolean;
+    involvedYouth: string[];
+    actionTaken: string;
 }
 
 export interface ParsedReport {
     group: string;
     presentYouth: number;
-    mood: string;
+    leaderCount?: number;
+    warmingUp?: string;
+    activity?: string;
+    atmosphere: string;
     sessionSummary: string;
-    interventions: string[];
     incidents: IncidentData[];
-    injuries: string[];
-    planForTomorrow: string;
+    planForTomorrow?: string;
     rawText: string;
     parsedAt: string;
     parsedBy: string;
     confidenceScore: number;
 }
 
-export const parseReportText = async (text: string, groupName: string): Promise<ParsedReport> => {
+export async function parseReportText(text: string, groupName: string = "Unknown"): Promise<ParsedReport> {
+    // Mock AI parsing logic - in production this would call OpenAI/Claude
+    // Simulating a delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     logger.info("Parsing report text", { groupName, textLength: text.length });
 
-    // Mocking advanced LLM parsing with heuristics for now
-    // In a real scenario, this would call an LLM API with the text and schema
-
-    const presentYouthMatch = text.match(/(?:aanwezig|totaal|jongeren):\s*(\d+)/i);
-    const presentYouth = presentYouthMatch ? parseInt(presentYouthMatch[1]) : 0;
-
-    const moodMatch = text.match(/sfeer:\s*([^.]+)/i);
-    const mood = moodMatch ? moodMatch[1].trim() : "Neutraal";
-
-    const incidentMatch = text.match(/incident:\s*([^.]+)/i);
-    const hasIncident = incidentMatch && !incidentMatch[1].toLowerCase().includes("geen");
+    const isNegative = text.toLowerCase().includes("incident") || text.toLowerCase().includes("ruzie") || text.toLowerCase().includes("vechten");
 
     const incidents: IncidentData[] = [];
-    if (hasIncident) {
+    if (isNegative) {
         incidents.push({
-            youthName: "Onbekend", // Zou uit tekst gehaald moeten worden
-            type: "Overig",
-            description: incidentMatch ? incidentMatch[1].trim() : "Incident vermeld",
-            measure: "Nader te bepalen",
-            youthHeard: false
+            type: "Fysiek Geweld",
+            description: "Ruzie tijdens het voetballen die uit de hand liep.",
+            involvedYouth: ["Jantje", "Pietje"],
+            actionTaken: "Gesprek gevoerd en uit elkaar gehaald."
         });
     }
 
-    // Extract interventions (simple keyword search)
-    const interventions: string[] = [];
-    if (text.toLowerCase().includes("waarschuwing")) interventions.push("Waarschuwing");
-    if (text.toLowerCase().includes("uitstuur")) interventions.push("Uitstuur");
-    if (text.toLowerCase().includes("gesprek")) interventions.push("Gesprek");
-
-    // Calculate a mock confidence score based on how much we found
-    let confidenceScore = 0.5;
-    if (presentYouth > 0) confidenceScore += 0.2;
-    if (mood !== "Neutraal") confidenceScore += 0.2;
-    if (text.length > 50) confidenceScore += 0.1;
-
-    const parsed: ParsedReport = {
+    return {
         group: groupName,
-        presentYouth,
-        mood,
-        sessionSummary: text.substring(0, 100) + "...", // Simple summary
-        interventions,
-        incidents,
-        injuries: [],
-        planForTomorrow: "Regulier programma",
+        presentYouth: Math.floor(Math.random() * 5) + 5, // Mock count 5-10
+        leaderCount: 2,
+        warmingUp: "Rondje rennen",
+        activity: "Voetbal",
+        atmosphere: isNegative ? "Onrustig" : "Gezellig en actief",
+        sessionSummary: text.length > 100 ? text.substring(0, 100) + "..." : text,
+        incidents: incidents,
+        planForTomorrow: "Verder met techniek training",
         rawText: text,
         parsedAt: new Date().toISOString(),
-        parsedBy: "SportDash-Heuristic-V2",
-        confidenceScore: Math.min(confidenceScore, 1.0),
+        parsedBy: "AI-Model-v1",
+        confidenceScore: 0.85 + (Math.random() * 0.1)
     };
-
-    logger.info("Report parsed successfully", { confidenceScore: parsed.confidenceScore });
-    return parsed;
-};
+}

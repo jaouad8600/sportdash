@@ -23,12 +23,11 @@ export default function FilterBar({
         className="flex-1 border border-green-400 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
       />
       <button
-        className="btn"
+        className="btn bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm"
         onClick={() => {
           setQuery("");
           onChange("");
         }}
-        className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm"
       >
         Wissen
       </button>

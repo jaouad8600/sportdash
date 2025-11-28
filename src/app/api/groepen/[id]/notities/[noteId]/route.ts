@@ -4,10 +4,11 @@ import { deleteNote } from "@/server/store";
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string; noteId: string } },
+  { params }: { params: Promise<{ id: string; noteId: string }> },
 ) {
   try {
-    await deleteNote(params.id, params.noteId);
+    const { id, noteId } = await params;
+    await deleteNote(id, noteId);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(

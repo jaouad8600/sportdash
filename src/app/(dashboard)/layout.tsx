@@ -1,6 +1,9 @@
+"use client";
+
 import RoleSwitcher from "@/components/ui/RoleSwitcher";
-import Sidebar from "@/components/ui/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { motion } from "framer-motion";
 
 export default function DashboardLayout({
   children,
@@ -15,15 +18,27 @@ export default function DashboardLayout({
         <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-teylingereind-orange/5 to-transparent rounded-full blur-3xl"></div>
       </div>
 
-      <Sidebar />
+      <motion.div
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 3.8, duration: 0.5, ease: "easeOut" }} // Delay to match splash screen exit (3.5s + slide)
+        className="z-20"
+      >
+        <Sidebar />
+      </motion.div>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-4 md:p-8 pt-16 md:pt-8 transition-all duration-300 relative z-10">
+      <motion.main
+        className="flex-1 p-4 md:p-8 pt-16 md:pt-8 transition-all duration-300 relative z-10"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 4.0, duration: 0.5, ease: "easeOut" }}
+      >
         <Breadcrumbs />
         <div className="max-w-[1600px] mx-auto">
           {children}
         </div>
-      </main>
+      </motion.main>
 
       <RoleSwitcher />
     </div>

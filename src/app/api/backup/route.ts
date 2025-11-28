@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 const BACKUP_DIR = path.join(process.cwd(), "backups");
-const DB_PATH = path.join(process.cwd(), "prisma", "dev.db");
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -37,14 +38,25 @@ export async function POST() {
     const backupName = `backup-${timestamp}.db`;
     const backupPath = path.join(BACKUP_DIR, backupName);
 
-    // Simple file copy for SQLite
-    // In a production environment with high write volume, you might want to use SQLite's backup API or VACUUM INTO
-    // But for this scale, copyFile is usually fine if the db isn't locked for long.
-    fs.copyFileSync(DB_PATH, backupPath);
+    // Use SQLite VACUUM INTO for a safe hot backup
+    // This requires SQLite 3.27.0+ (2019) which Node 18+ should have
+    await prisma.$executeRawUnsafe(`VACUUM INTO '${backupPath}'`);
 
     return NextResponse.json({ message: "Backup created", name: backupName });
   } catch (error) {
     console.error("Error creating backup:", error);
-    return NextResponse.json({ error: "Failed to create backup" }, { status: 500 });
+
+    // Fallback if VACUUM INTO fails (e.g. permission issues or old sqlite)
+    try {
+      const DB_PATH = path.join(process.cwd(), "prisma", "dev.db");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupName = `backup-fallback-${timestamp}.db`;
+      const backupPath = path.join(BACKUP_DIR, backupName);
+      fs.copyFileSync(DB_PATH, backupPath);
+      return NextResponse.json({ message: "Backup created (fallback)", name: backupName });
+    } catch (fallbackError) {
+      console.error("Fallback backup failed:", fallbackError);
+      return NextResponse.json({ error: "Failed to create backup" }, { status: 500 });
+    }
   }
 }

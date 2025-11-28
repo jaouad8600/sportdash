@@ -2,22 +2,22 @@
 
 export type WeekKey = string; // bv. "2025-W37"
 type WeekMap = Record<string, number>;           // { [groupId]: count }
-type Store   = Record<WeekKey, WeekMap>;         // { [weekKey]: WeekMap }
+type Store = Record<WeekKey, WeekMap>;         // { [weekKey]: WeekMap }
 
 const KEY = "extraSport";
 
 // Fallback-groepen (als er niets in localStorage staat)
 const FALLBACK_GROUPS = [
-  "Poel","Lier","Zijl","Nes","Vliet","Gaag","Kust","Golf",
-  "Zift","Lei","Kade","Kreek","Duin","Rak","Bron",
+  "Poel", "Lier", "Zijl", "Nes", "Vliet", "Gaag", "Kust", "Golf",
+  "Zift", "Lei", "Kade", "Kreek", "Duin", "Rak", "Bron",
 ];
 
 // Klein hulpfunctietje om een stabiele id te maken uit een naam
 function groupIdFromName(name: string) {
-  return name
+  return (name
     .normalize?.("NFD")
-    .replace?.(/[\u0300-\u036f]/g, "") ?? name
-}.toLowerCase()
+    .replace?.(/[\u0300-\u036f]/g, "") ?? name)
+    .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
@@ -59,7 +59,7 @@ function dateFromWeekKey(week: WeekKey): Date {
   // Parse "YYYY-Www" → maandag van die week (UTC)
   const m = /^(\d{4})-W(\d{2})$/.exec(String(week));
   const year = m ? Number(m[1]) : new Date().getUTCFullYear();
-  const w    = m ? Number(m[2]) : 1;
+  const w = m ? Number(m[2]) : 1;
   const simple = new Date(Date.UTC(year, 0, 1 + (w - 1) * 7));
   const dow = simple.getUTCDay() || 7;
   const monday = new Date(simple);

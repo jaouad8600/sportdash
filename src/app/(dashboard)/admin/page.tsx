@@ -1,14 +1,9 @@
 "use client";
-import OverdrachtTile from "@/components/OverdrachtTile";
-import OverdrachtSnapshotCard from "@/components/OverdrachtSnapshotCard";
-import SportmutatiesCard from "@/components/SportmutatiesCard";
-import IndicatiesSummaryCard from "@/components/IndicatiesSummaryCard";
-import TodayPlanCard from "@/components/TodayPlanCard";
-import RedGroupsCard from "@/components/RedGroupsCard";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { isSameDay, isSameWeek, startOfWeek, addDays } from "date-fns";
-import nl from "date-fns/locale/nl";
+import { nl } from "date-fns/locale";
 import ClientOnly from "@/components/ClientOnly";
 import WeekStrip from "../../../components/WeekStrip";
 import { loadEvents, loadRestrictions } from "@/lib/clientStore";
@@ -57,11 +52,11 @@ function extractAlerts(): AlertItem[] {
   try {
     const d = localStorage.getItem("overdracht-last-json");
     if (d) dag = JSON.parse(d);
-  } catch {}
+  } catch { }
   try {
     const s = localStorage.getItem("overdracht-sport-last-json");
     if (s) sport = JSON.parse(s);
-  } catch {}
+  } catch { }
   const out: AlertItem[] = [];
   for (const g of dag?.groups || []) {
     const group = g.group;
@@ -97,7 +92,7 @@ function extractAlerts(): AlertItem[] {
         ),
       );
     }
-  } catch {}
+  } catch { }
   const m = new Map(out.map((a) => [a.id, a]));
   return [...m.values()].slice(0, 12);
 }
@@ -132,7 +127,7 @@ export default function Admin() {
     if (!mounted) return;
     try {
       setKSportMut(countOpenSportmutaties());
-    } catch {}
+    } catch { }
   }, [mounted, events]);
 
   useEffect(() => {
@@ -141,7 +136,7 @@ export default function Admin() {
       setDismissed(
         JSON.parse(localStorage.getItem("dashboard-dismissed-alerts") || "[]"),
       );
-    } catch {}
+    } catch { }
     setAlerts(extractAlerts());
   }, [mounted]);
   useEffect(() => {
@@ -151,7 +146,7 @@ export default function Admin() {
         "dashboard-dismissed-alerts",
         JSON.stringify(dismissed),
       );
-    } catch {}
+    } catch { }
   }, [mounted, dismissed]);
 
   // KPI’s
@@ -249,9 +244,8 @@ export default function Admin() {
                     )}
                     <div className="text-right">
                       <button
-                        className="btn btn-primary btn"
+                        className="btn btn-primary px-2 py-1 rounded-lg border"
                         onClick={() => setDismissed((d) => [...d, a.id])}
-                        className="px-2 py-1 rounded-lg border"
                       >
                         Sluiten
                       </button>

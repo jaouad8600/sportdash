@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Users, Activity, AlertTriangle, MessageCircleWarning } from "lucide-react";
 import ColorPicker from "@/components/ui/ColorPicker";
 import NotesModal from "@/components/domain/NotesModal";
@@ -16,6 +17,7 @@ interface Group {
   _count: {
     mutations: number;
     indications: number;
+    restrictions: number;
   };
   restorativeTalks?: Array<{ id: string; youthName: string; createdBy: string; reason: string }>;
 }
@@ -107,20 +109,42 @@ export default function GroupsPage() {
               <div className="p-6">
                 {/* Header with Color Picker */}
                 <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 font-serif">{group.name}</h2>
-                    {/* Status Text */}
-                    <div className="mt-1 text-xs font-medium text-gray-600">
-                      {(() => {
-                        switch (group.color?.toUpperCase()) {
-                          case 'ROOD': return 'Leiden (Veel sturing, weinig ondersteuning)';
-                          case 'ORANJE': return 'Begeleiden (Gemiddelde sturing, gemiddelde ondersteuning)';
-                          case 'GEEL': return 'Steunen (Weinig sturing, veel ondersteuning)';
-                          case 'GROEN': return 'Delegeren (Weinig sturing, weinig ondersteuning)';
-                          default: return '';
-                        }
-                      })()}
-                    </div>
+                  <div className="flex-1">
+                    <Link href={`/groepen/${group.id}`} className="hover:opacity-80 transition-opacity">
+                      <h2 className="text-xl font-bold text-gray-800 font-serif hover:text-blue-600 cursor-pointer">{group.name}</h2>
+                      {/* Status Text */}
+                      <div className="mt-2">
+                        {(() => {
+                          const statusText = (() => {
+                            switch (group.color?.toUpperCase()) {
+                              case 'ROOD': return 'Leiden (Veel sturing, weinig ondersteuning)';
+                              case 'ORANJE': return 'Begeleiden (Gemiddelde sturing, gemiddelde ondersteuning)';
+                              case 'GEEL': return 'Steunen (Weinig sturing, veel ondersteuning)';
+                              case 'GROEN': return 'Delegeren (Weinig sturing, weinig ondersteuning)';
+                              default: return '';
+                            }
+                          })();
+
+                          if (!statusText) return null;
+
+                          const colorClasses = (() => {
+                            switch (group.color?.toUpperCase()) {
+                              case 'ROOD': return 'bg-red-100 text-red-800 border-red-200';
+                              case 'ORANJE': return 'bg-orange-100 text-orange-800 border-orange-200';
+                              case 'GEEL': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                              case 'GROEN': return 'bg-green-100 text-green-800 border-green-200';
+                              default: return 'bg-gray-100 text-gray-800 border-gray-200';
+                            }
+                          })();
+
+                          return (
+                            <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold border ${colorClasses}`}>
+                              {statusText}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </Link>
                   </div>
                   <ColorPicker
                     currentColor={group.color}
@@ -131,25 +155,7 @@ export default function GroupsPage() {
                 </div>
 
                 {/* Youths List - REMOVED FOR PRIVACY */}
-                {/* <div className="mb-4">
-                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                    Jongeren ({group.youths?.length || 0})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {group.youths && group.youths.length > 0 ? (
-                      group.youths.map((youth) => (
-                        <span
-                          key={youth.id}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md border border-gray-200"
-                        >
-                          {youth.firstName} {youth.lastName.charAt(0)}.
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Geen jongeren gekoppeld</span>
-                    )}
-                  </div>
-                </div> */}
+                {/* Youth names are hidden from the main view as per privacy requirements */}
 
                 {/* Restorative Talk Flag */}
                 <div className="mb-4">
@@ -187,21 +193,28 @@ export default function GroupsPage() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="text-center p-2 bg-red-50 rounded-lg">
-                    <div className="flex justify-center text-red-500 mb-1">
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                  <Link href="/sportmutaties" className="text-center p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-red-500 mb-1 group-hover/stat:scale-110 transition-transform">
                       <Activity size={16} />
                     </div>
                     <div className="text-lg font-bold text-gray-700">{group._count.mutations}</div>
-                    <div className="text-xs text-gray-500">Mutaties</div>
-                  </div>
-                  <div className="text-center p-2 bg-purple-50 rounded-lg">
-                    <div className="flex justify-center text-purple-500 mb-1">
+                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-red-600">Mutaties</div>
+                  </Link>
+                  <Link href="/sportindicaties" className="text-center p-2 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-purple-500 mb-1 group-hover/stat:scale-110 transition-transform">
                       <Activity size={16} />
                     </div>
                     <div className="text-lg font-bold text-gray-700">{group._count.indications}</div>
-                    <div className="text-xs text-gray-500">Indicaties</div>
-                  </div>
+                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-purple-600">Indicaties</div>
+                  </Link>
+                  <Link href="/incidenten" className="text-center p-2 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-orange-500 mb-1 group-hover/stat:scale-110 transition-transform">
+                      <AlertTriangle size={16} />
+                    </div>
+                    <div className="text-lg font-bold text-gray-700">{group._count.restrictions || 0}</div>
+                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-orange-600">Beperkingen</div>
+                  </Link>
                 </div>
 
                 {/* Notes Preview - Clickable */}

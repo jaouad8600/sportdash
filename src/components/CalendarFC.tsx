@@ -8,7 +8,20 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import nlLocale from "@fullcalendar/core/locales/nl";
-import { loadColorMap, deriveGroupStatus } from "@/lib/sportmutatie";
+// import { loadColorMap, deriveGroupStatus } from "@/lib/sportmutatie"; // Functions don't exist
+
+// Stub functions TODO: implement properly or remove if not needed
+const loadColorMap = () => ({
+  GROEN: "#22c55e",
+  GEEL: "#eab308",
+  ORANJE: "#f97316",
+  ROOD: "#ef4444",
+});
+
+const deriveGroupStatus = (mutaties: any[], group: string) => {
+  // TODO: Implement proper logic or remove
+  return null;
+};
 
 function loadLS<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;

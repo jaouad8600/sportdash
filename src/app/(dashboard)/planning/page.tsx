@@ -88,9 +88,8 @@ export default function PlanningPage() {
             className="border rounded px-2 py-1"
           />
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded"
             onClick={() => setSel({ date, titel: "", afdeling: "EB" })}
-            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded"
           >
             + Item
           </button>
@@ -125,16 +124,14 @@ export default function PlanningPage() {
                 <td className="px-3 py-2">
                   <div className="flex gap-2 justify-end">
                     <button
-                      className="btn btn-primary btn"
+                      className="btn btn-primary text-blue-600 hover:underline"
                       onClick={() => setSel(r)}
-                      className="text-blue-600 hover:underline"
                     >
                       Bewerken
                     </button>
                     <button
-                      className="btn btn-primary btn"
+                      className="btn btn-primary text-rose-600 hover:underline"
                       onClick={() => remove(r.id)}
-                      className="text-rose-600 hover:underline"
                     >
                       Verwijderen
                     </button>
@@ -210,15 +207,14 @@ export default function PlanningPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button
-                className="btn btn-primary btn"
+                className="btn btn-primary px-3 py-1.5 rounded border"
                 onClick={() => setSel(undefined)}
-                className="px-3 py-1.5 rounded border"
               >
                 Annuleren
               </button>
               <button
                 onClick={save}
-                className="btn btn-primary px-3 py-1.5 rounded bg-green-600 text-white btn"
+                className="btn btn-primary px-3 py-1.5 rounded bg-green-600 text-white"
               >
                 Opslaan
               </button>

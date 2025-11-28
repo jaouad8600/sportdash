@@ -48,11 +48,15 @@ export async function calculateGroupPriorities(startDate?: Date, endDate?: Date)
                         gte: start,
                         lte: end
                     },
-                    status: 'COMPLETED'
+                    // Fetch both COMPLETED and REFUSED to count as "offered/consumed"
+                    status: {
+                        in: ['COMPLETED', 'REFUSED']
+                    }
                 },
                 select: {
                     id: true,
-                    date: true
+                    date: true,
+                    status: true
                 }
             }
         }
@@ -61,6 +65,7 @@ export async function calculateGroupPriorities(startDate?: Date, endDate?: Date)
     // Bereken scores voor elke groep
     const priorities: GroupPriority[] = groups.map(group => {
         const regularMoments = group.reports.length;
+        // Count both COMPLETED and REFUSED as "moments" that affect priority
         const extraMoments = group.extraSportMoments.length;
         const missedMoments = 0; // TODO: Implementeer logica voor gemiste momenten indien nodig
 

@@ -14,7 +14,7 @@ export default function SharePointPage() {
   const [conf, setConf] = useLiveObject<SpConf>("sharepointConf", {});
 
   const update = (patch: Partial<SpConf>) =>
-    setConf((prev) => ({ ...prev, ...patch }));
+    setConf({ ...conf, ...patch });
 
   return (
     <div className="p-6 space-y-4">

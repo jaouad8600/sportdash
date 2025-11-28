@@ -49,14 +49,13 @@ export default function Bezoek() {
     const next = list.map((v) =>
       v.id === id
         ? {
-            ...v,
-            status:
-              v.status === "gepland"
-                ? "afgerond"
-                : v.status === "afgerond"
-                  ? "geannuleerd"
-                  : "gepland",
-          }
+          ...v,
+          status: (v.status === "gepland"
+            ? "afgerond"
+            : v.status === "afgerond"
+              ? "geannuleerd"
+              : "gepland") as Visit["status"],
+        }
         : v,
     );
     saveVisits(next);
@@ -188,16 +187,14 @@ export default function Bezoek() {
             Toevoegen
           </button>
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border"
             onClick={() => download("bezoek.csv", csv, "text/csv")}
-            className="px-3 py-2 rounded-xl border"
           >
             Exporteer CSV
           </button>
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border"
             onClick={() => download("bezoek.ics", ics, "text/calendar")}
-            className="px-3 py-2 rounded-xl border"
           >
             Exporteer ICS
           </button>
@@ -244,16 +241,14 @@ export default function Bezoek() {
                 </td>
                 <td className="p-2 text-right">
                   <button
-                    className="btn btn-primary btn"
+                    className="btn btn-primary px-2 py-1 rounded-lg border mr-2"
                     onClick={() => toggle(v.id)}
-                    className="px-2 py-1 rounded-lg border mr-2"
                   >
                     Toggle
                   </button>
                   <button
-                    className="btn btn-primary btn"
+                    className="btn btn-primary px-2 py-1 rounded-lg border"
                     onClick={() => remove(v.id)}
-                    className="px-2 py-1 rounded-lg border"
                   >
                     Verwijder
                   </button>

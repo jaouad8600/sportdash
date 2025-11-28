@@ -1,37 +1,61 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { AuthUser, MOCK_USERS } from "@/lib/auth";
 import { Role } from "@prisma/client";
+import { useRouter, usePathname } from "next/navigation";
+
+export interface AuthUser {
+    id: string;
+    username: string;
+    name: string;
+    email?: string;
+    role: Role;
+    permissions?: string;
+}
 
 interface AuthContextType {
-    user: AuthUser;
-    switchRole: (role: Role) => void;
+    user: AuthUser | null;
+    isLoading: boolean;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<AuthUser>(MOCK_USERS.BEGELEIDER);
+    const [user, setUser] = useState<AuthUser | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+    const pathname = usePathname();
 
-    // Persist mock role in localStorage for demo purposes
     useEffect(() => {
-        const storedRole = localStorage.getItem("mockRole") as Role;
-        if (storedRole && MOCK_USERS[storedRole]) {
-            setUser(MOCK_USERS[storedRole]);
-        }
-    }, []);
+        checkAuth();
+    }, [pathname]); // Re-check on navigation
 
-    const switchRole = (role: Role) => {
-        const newUser = MOCK_USERS[role];
-        setUser(newUser);
-        localStorage.setItem("mockRole", role);
-        // Force reload to refresh server components if needed (simulating login)
-        window.location.reload();
+    const checkAuth = async () => {
+        try {
+            const res = await fetch("/api/auth/me");
+            const data = await res.json();
+            setUser(data.user);
+        } catch (error) {
+            console.error("Auth check failed", error);
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const logout = async () => {
+        try {
+            await fetch("/api/auth/logout", { method: "POST" });
+            setUser(null);
+            router.push("/login");
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ user, switchRole }}>
+        <AuthContext.Provider value={{ user, isLoading, logout }}>
             {children}
         </AuthContext.Provider>
     );

@@ -80,7 +80,7 @@ function writeJSON(key: string, value: unknown) {
   if (!isBrowser) return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch { }
 }
 
 /* ===== Events ===== */
@@ -111,7 +111,7 @@ export function setActiveGroup(group: string | null): void {
   if (group == null) {
     try {
       localStorage.removeItem(K_GROUP);
-    } catch {}
+    } catch { }
   } else {
     writeJSON(K_GROUP, group);
   }
@@ -135,14 +135,57 @@ export function loadSportRestrictions(): Restriction[] {
 }
 
 /* ===== Visits / Files / Logs ===== */
-export function loadVisits(): any[] {
-  return readJSON<any[]>(K_VISITS, []);
+export type Visit = {
+  id: string;
+  title: string;
+  group: string;
+  kind: string;
+  date: string;
+  start?: string;
+  end?: string;
+  status: "gepland" | "afgerond" | "geannuleerd";
+  note?: string;
+};
+
+export function loadVisits(): Visit[] {
+  return readJSON<Visit[]>(K_VISITS, []);
 }
+export function addVisit(visit: any) {
+  const visits = loadVisits();
+  visits.push(visit);
+  writeJSON(K_VISITS, visits);
+}
+export function saveVisits(visits: any[]) {
+  writeJSON(K_VISITS, visits);
+}
+
 export function loadFiles(): any[] {
   return readJSON<any[]>(K_FILES, []);
 }
-export function loadLogs(): any[] {
-  return readJSON<any[]>(K_LOGS, []);
+export function addFile(file: any) {
+  const files = loadFiles();
+  files.push(file);
+  writeJSON(K_FILES, files);
+}
+export function saveFiles(files: any[]) {
+  writeJSON(K_FILES, files);
+}
+export function deleteFile(id: string) {
+  const files = loadFiles();
+  const newFiles = files.filter((f: any) => f.id !== id);
+  writeJSON(K_FILES, newFiles);
+}
+
+export type LogEntry = {
+  id: string;
+  timestamp: string;
+  level: "info" | "warn" | "error";
+  message: string;
+  details?: any;
+};
+
+export function loadLogs(): LogEntry[] {
+  return readJSON<LogEntry[]>(K_LOGS, []);
 }
 
 /* ===== Utils ===== */
@@ -285,3 +328,16 @@ export function countByState(tide: Tide, state: GroupState): number {
   ).length;
 }
 // Re-export: één bron van waarheid voor groepslijsten
+
+export function saveLogs(logs: any[]) {
+  writeJSON(K_LOGS, logs);
+}
+
+export function upsertEvents(events: CalEvent[]) {
+  const current = loadEvents();
+  const map = new Map(current.map(e => [e.id, e]));
+  for (const e of events) {
+    map.set(e.id, e);
+  }
+  saveEvents(Array.from(map.values()));
+}

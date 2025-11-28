@@ -6,5 +6,14 @@ const nextConfig = {
   experimental: {
     // niets exotisch
   },
+  async redirects() {
+    return [
+      {
+        source: "/dashboard",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 export default nextConfig;

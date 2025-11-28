@@ -68,7 +68,7 @@ export default function GroepenPage() {
   );
 }
 
-function ColorButton({active,label,onClick}:{active?:boolean;label:string;onClick:()=>void}) {
+function ColorButton({ active, label, onClick }: { active?: boolean; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -80,8 +80,8 @@ function ColorButton({active,label,onClick}:{active?:boolean;label:string;onClic
   );
 }
 
-function Badge({children, tone="zinc"}:{children:React.ReactNode; tone?: "green"|"violet"|"zinc"}) {
-  const tones: Record<string,string> = {
+function Badge({ children, tone = "zinc" }: { children: React.ReactNode; tone?: "green" | "violet" | "zinc" }) {
+  const tones: Record<string, string> = {
     green: "bg-green-50 text-green-700 ring-green-200",
     violet: "bg-violet-50 text-violet-700 ring-violet-200",
     zinc: "bg-zinc-50 text-zinc-700 ring-zinc-200",
@@ -95,7 +95,7 @@ function Badge({children, tone="zinc"}:{children:React.ReactNode; tone?: "green"
 
 function GroupCard({ group }: { group: Group }) {
   const groupId = useMemo(() => gid(group), [group]);
-  const title = String(group?.naam ?? group?.name ?? groupId || "Onbekend");
+  const title = String((group?.naam ?? group?.name ?? groupId) || "Onbekend");
   const [kleur, setKleur] = useState<string | undefined>(group?.kleur);
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteText, setNoteText] = useState("");
@@ -134,17 +134,17 @@ function GroupCard({ group }: { group: Group }) {
         if (!abort && mRes.status === "fulfilled") {
           const d = await mRes.value.json();
           const items = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
-          setMutOpen(items.filter((x:any)=> String(x?.status||"open").toLowerCase()==="open").length);
+          setMutOpen(items.filter((x: any) => String(x?.status || "open").toLowerCase() === "open").length);
         }
         if (!abort && iRes.status === "fulfilled") {
           const d = await iRes.value.json();
           const items = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
-          setIndOpen(items.filter((x:any)=> {
-            const s = String(x?.status||"open").toLowerCase();
-            return s==="open" || s==="in behandeling" || s==="in-behandeling";
+          setIndOpen(items.filter((x: any) => {
+            const s = String(x?.status || "open").toLowerCase();
+            return s === "open" || s === "in behandeling" || s === "in-behandeling";
           }).length);
         }
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
     })();
     return () => { abort = true; };
   }, [groupId]);
@@ -158,7 +158,7 @@ function GroupCard({ group }: { group: Group }) {
         body: JSON.stringify({ kleur: newKleur }),
         cache: "no-store",
       });
-    } catch {/* ignore */}
+    } catch {/* ignore */ }
   }
 
   async function addNote() {
@@ -173,7 +173,7 @@ function GroupCard({ group }: { group: Group }) {
         // API verwacht { item } — fallback werkt ook als server plain body accepteert
         body: JSON.stringify({ item: { groupId, text: txt } }),
       });
-      const data = await res.json().catch(()=>null);
+      const data = await res.json().catch(() => null);
       const item: Note | null =
         (data && (data.item as Note)) ||
         (Array.isArray(data?.items) ? (data.items[0] as Note) : null) ||
@@ -222,7 +222,7 @@ function GroupCard({ group }: { group: Group }) {
               geel: "bg-yellow-500",
               oranje: "bg-orange-500",
               rood: "bg-red-600",
-            }[String(kleur||"").toLowerCase()] || "bg-zinc-300"}
+            }[String(kleur || "").toLowerCase()] || "bg-zinc-300"}
             style={{ height: "100%", width: "100%" }}
           />
         </div>
@@ -231,10 +231,10 @@ function GroupCard({ group }: { group: Group }) {
       <div className="mt-4">
         <div className="text-sm font-medium text-zinc-700 mb-2">Kleurstatus</div>
         <div className="flex flex-wrap gap-2">
-          <ColorButton active={kleur==="groen"}  label="GROEN"  onClick={()=>saveColor("groen")} />
-          <ColorButton active={kleur==="geel"}   label="GEEL"   onClick={()=>saveColor("geel")} />
-          <ColorButton active={kleur==="oranje"} label="ORANJE" onClick={()=>saveColor("oranje")} />
-          <ColorButton active={kleur==="rood"}   label="ROOD"   onClick={()=>saveColor("rood")} />
+          <ColorButton active={kleur === "groen"} label="GROEN" onClick={() => saveColor("groen")} />
+          <ColorButton active={kleur === "geel"} label="GEEL" onClick={() => saveColor("geel")} />
+          <ColorButton active={kleur === "oranje"} label="ORANJE" onClick={() => saveColor("oranje")} />
+          <ColorButton active={kleur === "rood"} label="ROOD" onClick={() => saveColor("rood")} />
         </div>
       </div>
 
@@ -243,7 +243,7 @@ function GroupCard({ group }: { group: Group }) {
         <div className="flex items-stretch gap-3">
           <input
             value={noteText}
-            onChange={(e)=>setNoteText(e.target.value)}
+            onChange={(e) => setNoteText(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Voeg notitie toe…"
             className="flex-1 rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
@@ -251,8 +251,8 @@ function GroupCard({ group }: { group: Group }) {
           />
           <button
             onClick={addNote}
-            disabled={busy || noteText.trim().length===0}
-            className={`px-5 py-3 rounded-lg text-sm font-semibold text-white ${busy || noteText.trim().length===0 ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
+            disabled={busy || noteText.trim().length === 0}
+            className={`px-5 py-3 rounded-lg text-sm font-semibold text-white ${busy || noteText.trim().length === 0 ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
           >
             Toevoegen
           </button>
@@ -266,7 +266,7 @@ function GroupCard({ group }: { group: Group }) {
               <div className="mt-1 text-xs text-zinc-500">{fmtDate(n.updatedAt || n.createdAt)} — Aangemaakt</div>
             </div>
           ))}
-          {notes.length===0 && (
+          {notes.length === 0 && (
             <div className="text-xs text-zinc-500">Nog geen notities.</div>
           )}
         </div>

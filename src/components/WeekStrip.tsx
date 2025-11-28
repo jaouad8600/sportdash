@@ -21,7 +21,14 @@ function label(d: Date) {
   }).format(d);
 }
 
-export default function WeekStrip() {
+interface WeekData {
+  name: string;
+  total: number;
+  eb: number;
+  vloed: number;
+}
+
+export default function WeekStrip({ data }: { data?: WeekData[] }) {
   const days = useMemo(() => {
     const start = startOfWeekLocal(new Date());
     return Array.from({ length: 7 }).map((_, i) => addDays(start, i));

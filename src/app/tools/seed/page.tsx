@@ -104,7 +104,7 @@ export default function SeedPage() {
     );
 
     // 2) Voeg toe volgens template
-    const toAdd = [];
+    const toAdd: ReturnType<typeof makeEvent>[] = [];
     for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
       // ma..vr
       const base = addDays(weekMon, dayIdx);
@@ -166,16 +166,14 @@ export default function SeedPage() {
 
         <div className="flex gap-8 flex-wrap">
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border hover:bg-zinc-50"
             onClick={() => seedByTemplate("eb")}
-            className="px-3 py-2 rounded-xl border hover:bg-zinc-50"
           >
             Seed EB (ma–vr)
           </button>
           <button
-            className="btn btn-primary btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border hover:bg-zinc-50"
             onClick={() => seedByTemplate("vloed")}
-            className="px-3 py-2 rounded-xl border hover:bg-zinc-50"
           >
             Seed Vloed (ma–vr)
           </button>

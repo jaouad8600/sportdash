@@ -1,53 +1,46 @@
-import { NextResponse } from "next/server";
-import { readJson, writeJson } from "@/lib/fsjson";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-type Mutatie = {
-  id: string;
-  datum: string;
-  jongere: string;
-  activiteit: string;
-  status: "open" | "afgerond";
-  opmerking?: string;
-};
-const FILE = "sportmutaties.json";
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } },
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const body = await req.json().catch(() => ({}));
-  const list = await readJson<Mutatie[]>(FILE, []);
-  const idx = list.findIndex((m) => m.id === params.id);
-  if (idx === -1)
-    return NextResponse.json({ error: "niet gevonden" }, { status: 404 });
-  const curr = list[idx];
-  list[idx] = {
-    ...curr,
-    datum: typeof body?.datum === "string" ? body.datum : curr.datum,
-    jongere: typeof body?.jongere === "string" ? body.jongere : curr.jongere,
-    activiteit:
-      typeof body?.activiteit === "string" ? body.activiteit : curr.activiteit,
-    status:
-      body?.status === "afgerond"
-        ? "afgerond"
-        : body?.status === "open"
-          ? "open"
-          : curr.status,
-    opmerking:
-      typeof body?.opmerking === "string" ? body.opmerking : curr.opmerking,
-  };
-  await writeJson(FILE, list);
-  return NextResponse.json(list[idx]);
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { reason, reasonType, startDate, endDate, isActive } = body;
+
+    const data: any = {};
+    if (reason) data.reason = reason;
+    if (reasonType) data.reasonType = reasonType;
+    if (startDate) data.startDate = new Date(startDate);
+    if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null;
+    if (isActive !== undefined) data.isActive = isActive;
+
+    const mutation = await prisma.sportMutation.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json(mutation);
+  } catch (error) {
+    console.error('Error updating mutation:', error);
+    return NextResponse.json({ error: 'Failed to update mutation' }, { status: 500 });
+  }
 }
 
 export async function DELETE(
-  _: Request,
-  { params }: { params: { id: string } },
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const list = await readJson<Mutatie[]>(FILE, []);
-  const next = list.filter((m) => m.id !== params.id);
-  if (next.length === list.length)
-    return NextResponse.json({ error: "niet gevonden" }, { status: 404 });
-  await writeJson(FILE, next);
-  return NextResponse.json({ ok: true });
+  try {
+    const { id } = await params;
+    await prisma.sportMutation.delete({
+      where: { id },
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting mutation:', error);
+    return NextResponse.json({ error: 'Failed to delete mutation' }, { status: 500 });
+  }
 }

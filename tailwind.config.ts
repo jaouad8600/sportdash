@@ -17,11 +17,17 @@ export default {
           white: "#FFFFFF",
         },
       },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic":
+          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+      },
       fontFamily: {
-        sans: ["var(--font-instrument-sans)", "Helvetica", "Arial", "sans-serif"],
-        serif: ["var(--font-instrument-serif)", "Georgia", "serif"],
+        sans: ["var(--font-sans)"],
+        serif: ["var(--font-serif)"],
       },
     },
   },
   plugins: [],
+  darkMode: 'class',
 } satisfies Config;

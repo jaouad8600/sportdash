@@ -97,3 +97,23 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: "Failed to update mutation" }, { status: 500 });
     }
 }
+
+export async function DELETE(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get("id");
+
+        if (!id) {
+            return NextResponse.json({ error: "Missing mutation ID" }, { status: 400 });
+        }
+
+        await prisma.sportMutation.delete({
+            where: { id },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Delete mutation error:", error);
+        return NextResponse.json({ error: "Failed to delete mutation" }, { status: 500 });
+    }
+}

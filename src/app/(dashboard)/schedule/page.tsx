@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { addDays, format, startOfWeek, isWithinInterval } from "date-fns";
-import nl from "date-fns/locale/nl";
+import { nl } from "date-fns/locale";
 import { CalEvent, GROUPS, loadEvents, upsertEvents } from "@/lib/clientStore";
 type Draft = {
   dayIndex: number;
@@ -95,42 +95,39 @@ export default function SchedulePage() {
       <div className="text-sm text-zinc-600">{header}</div>
       <div className="flex flex-wrap gap-2">
         <button
-          className="btn btn-primary btn"
+          className="btn btn-primary px-3 py-2 rounded-xl border"
           onClick={() => setAnchor(addDays(anchor, -7))}
-          className="px-3 py-2 rounded-xl border"
         >
           ← Vorige
         </button>
         <button
-          className="btn btn-primary btn"
+          className="btn btn-primary px-3 py-2 rounded-xl border"
           onClick={() =>
             setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))
           }
-          className="px-3 py-2 rounded-xl border"
         >
           Vandaag
         </button>
         <button
-          className="btn btn-primary btn"
+          className="btn btn-primary px-3 py-2 rounded-xl border"
           onClick={() => setAnchor(addDays(anchor, 7))}
-          className="px-3 py-2 rounded-xl border"
         >
           Volgende →
         </button>
         <div className="grow"></div>
-        <button onClick={autofill} className="btn btn-primary px-3 py-2 rounded-xl border btn">
+        <button onClick={autofill} className="btn btn-primary px-3 py-2 rounded-xl border">
           Auto-vul
         </button>
-        <button onClick={saveAll} className="btn btn-primary px-3 py-2 rounded-xl border btn">
+        <button onClick={saveAll} className="btn btn-primary px-3 py-2 rounded-xl border">
           Opslaan
         </button>
         <button
           onClick={clearPending}
-          className="btn btn-primary px-3 py-2 rounded-xl border btn"
+          className="btn btn-primary px-3 py-2 rounded-xl border"
         >
           Leeg
         </button>
-        <button onClick={exportICS} className="btn btn-primary px-3 py-2 rounded-xl border btn">
+        <button onClick={exportICS} className="btn btn-primary px-3 py-2 rounded-xl border">
           Exporteer ICS (week)
         </button>
       </div>
@@ -215,7 +212,7 @@ export default function SchedulePage() {
         <div className="md:col-span-5">
           <button
             onClick={addBlock}
-            className="btn btn-primary px-3 py-2 rounded-xl border btn"
+            className="btn btn-primary px-3 py-2 rounded-xl border"
           >
             + Voeg blok toe
           </button>
@@ -268,7 +265,7 @@ export default function SchedulePage() {
                       height: Math.max(
                         24,
                         ((ev.end.getTime() - ev.start.getTime()) / 60000 / 60) *
-                          48,
+                        48,
                       ),
                     }}
                   >

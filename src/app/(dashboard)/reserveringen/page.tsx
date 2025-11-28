@@ -1,39 +1,78 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Clock, User, Plus, Trash2, MapPin } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { anonymizeText } from "@/lib/privacy";
+import { format, addDays, isSameDay, parseISO, addMinutes, setHours, setMinutes } from "date-fns";
+import { nl } from "date-fns/locale";
+import { Calendar as CalendarIcon, Clock, Plus, Trash2, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthContext";
 
 interface Reservation {
     id: string;
     resourceId: string;
+    resourceName: string;
+    userId: string;
     userName: string;
     startTime: string;
     endTime: string;
-    title: string;
+    title?: string;
+    description?: string;
 }
 
 const RESOURCES = [
-    { id: "SPORTZAAL", label: "Sportzaal" },
-    { id: "FITNESS", label: "Fitnessruimte" },
-    { id: "SPORTVELD", label: "Sportveld" }
+    { id: "SPORTZAAL_EB", name: "Sportzaal EB" },
+    { id: "SPORTZAAL_VLOED", name: "Sportzaal Vloed" },
+    { id: "SPORTVELD_EB", name: "Sportveld EB" },
+    { id: "SPORTVELD_VLOED", name: "Sportveld Vloed" },
+    { id: "FITNESSZAAL", name: "Fitnesszaal" },
+    { id: "GYMZAAL", name: "Gymzaal" },
+];
+
+const TIME_SLOTS = [
+    { start: "16:00", end: "16:45" },
+    { start: "16:45", end: "17:30" },
+    { start: "17:30", end: "18:15" },
+    { start: "18:15", end: "19:00" },
+    { start: "19:00", end: "19:45" },
+    { start: "19:45", end: "20:30" },
 ];
 
 export default function ReservationsPage() {
-    const [activeResource, setActiveResource] = useState(RESOURCES[0].id);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const { user } = useAuth();
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedDate, setSelectedDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Form
+    // Form State
     const [formData, setFormData] = useState({
+        resourceId: RESOURCES[0].id,
+        date: format(new Date(), "yyyy-MM-dd"),
+        startTime: "16:00",
+        endTime: "16:45",
         userName: "",
-        startTime: "09:00",
-        endTime: "10:00",
-        title: ""
+        title: "",
+        description: "",
+        groupId: ""
     });
+
+    const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+
+    useEffect(() => {
+        if (user?.name) {
+            setFormData(prev => ({ ...prev, userName: user.name }));
+        }
+        fetchGroups();
+    }, [user]);
+
+    const fetchGroups = async () => {
+        try {
+            const res = await fetch("/api/groups");
+            const data = await res.json();
+            setGroups(data);
+        } catch (error) {
+            console.error("Failed to fetch groups", error);
+        }
+    };
 
     useEffect(() => {
         fetchReservations();
@@ -42,7 +81,8 @@ export default function ReservationsPage() {
     const fetchReservations = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reservations?date=${selectedDate}`);
+            const dateStr = format(selectedDate, "yyyy-MM-dd");
+            const res = await fetch(`/api/reservations?date=${dateStr}`);
             const data = await res.json();
             setReservations(data);
         } catch (error) {
@@ -52,33 +92,75 @@ export default function ReservationsPage() {
         }
     };
 
-    const handleCreate = async () => {
+    const handleSlotClick = (resourceId: string, start: string, end: string) => {
+        // Check if slot is already booked
+        const isBooked = reservations.some(r =>
+            r.resourceId === resourceId &&
+            format(parseISO(r.startTime), "HH:mm") === start
+        );
+
+        if (isBooked) return; // Or open details modal
+
+        setFormData({
+            ...formData,
+            resourceId,
+            date: format(selectedDate, "yyyy-MM-dd"),
+            startTime: start,
+            endTime: end,
+            title: "",
+            description: "",
+            groupId: ""
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async () => {
+        // Validation
+        if (!formData.userName.trim()) {
+            alert("Vul een naam in.");
+            return;
+        }
+        if (formData.endTime <= formData.startTime) {
+            alert("Eindtijd moet later zijn dan starttijd.");
+            return;
+        }
+
         try {
+            const resource = RESOURCES.find(r => r.id === formData.resourceId);
+            const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
+            const endDateTime = new Date(`${formData.date}T${formData.endTime}`);
+
             const res = await fetch("/api/reservations", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    resourceId: activeResource,
-                    date: selectedDate,
-                    ...formData
+                    resourceId: formData.resourceId,
+                    resourceName: resource?.name,
+                    userId: user?.id || "unknown",
+                    userName: formData.userName,
+                    groupId: formData.groupId,
+                    startTime: startDateTime.toISOString(),
+                    endTime: endDateTime.toISOString(),
+                    title: formData.title,
+                    description: formData.description
                 }),
             });
 
-            if (res.ok) {
-                setIsModalOpen(false);
-                fetchReservations();
-                setFormData({ userName: "", startTime: "09:00", endTime: "10:00", title: "" });
-            } else {
+            if (!res.ok) {
                 const err = await res.json();
-                alert(err.error || "Reserveren mislukt");
+                alert(err.error || "Fout bij opslaan");
+                return;
             }
+
+            setIsModalOpen(false);
+            fetchReservations();
         } catch (error) {
-            console.error("Error creating reservation", error);
+            console.error("Error saving reservation", error);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Reservering verwijderen?")) return;
+        if (!confirm("Weet je zeker dat je deze reservering wilt verwijderen?")) return;
         try {
             await fetch(`/api/reservations?id=${id}`, { method: "DELETE" });
             fetchReservations();
@@ -87,160 +169,215 @@ export default function ReservationsPage() {
         }
     };
 
-    const filteredReservations = reservations.filter(r => r.resourceId === activeResource);
+    const nextDay = () => setSelectedDate(addDays(selectedDate, 1));
+    const prevDay = () => setSelectedDate(addDays(selectedDate, -1));
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-12">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="max-w-[1600px] mx-auto p-6">
+            <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900 font-serif">Reserveringen</h1>
-                    <p className="text-gray-500 mt-2">Beheer ruimtegebruik</p>
+                    <h1 className="text-3xl font-bold text-gray-900 font-serif">Reserveringen</h1>
+                    <p className="text-gray-500 mt-1">Klik op een tijdslot om te reserveren (16:00 - 20:30)</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teylingereind-royal outline-none"
-                    />
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="px-4 py-2 bg-teylingereind-royal text-white rounded-xl hover:bg-blue-700 flex items-center gap-2 font-medium shadow-lg"
-                    >
-                        <Plus size={20} />
-                        Reserveren
+
+                {/* Date Navigation */}
+                <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+                    <button onClick={prevDay} className="p-2 hover:bg-gray-100 rounded-full">
+                        <ChevronLeft size={24} className="text-gray-600" />
+                    </button>
+                    <div className="flex items-center gap-2 text-lg font-medium text-gray-800 min-w-[200px] justify-center">
+                        <CalendarIcon size={20} className="text-blue-600" />
+                        {format(selectedDate, "EEEE d MMMM", { locale: nl })}
+                    </div>
+                    <button onClick={nextDay} className="p-2 hover:bg-gray-100 rounded-full">
+                        <ChevronRight size={24} className="text-gray-600" />
                     </button>
                 </div>
             </div>
 
-            {/* Resource Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-                {RESOURCES.map(res => (
-                    <button
-                        key={res.id}
-                        onClick={() => setActiveResource(res.id)}
-                        className={`px-6 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${activeResource === res.id
-                            ? "bg-teylingereind-royal text-white shadow-md"
-                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                            }`}
-                    >
-                        {res.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Timeline / List */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-[400px]">
-                <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                    <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                        <Calendar size={20} className="text-teylingereind-royal" />
-                        Overzicht voor {new Date(selectedDate).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </h2>
-                </div>
-
-                <div className="p-6 space-y-4">
-                    {loading ? (
-                        <div className="text-center py-12 text-gray-400">Laden...</div>
-                    ) : filteredReservations.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                            <Clock size={48} className="mx-auto mb-3 opacity-20" />
-                            <p>Geen reserveringen voor deze ruimte</p>
+            {/* Calendar Grid */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="grid grid-cols-[100px_repeat(6,1fr)] divide-x divide-gray-200">
+                    {/* Header Row */}
+                    <div className="bg-gray-50 p-4 border-b border-gray-200 font-medium text-gray-500 text-center flex items-center justify-center">
+                        Tijd
+                    </div>
+                    {RESOURCES.map(resource => (
+                        <div key={resource.id} className="bg-gray-50 p-4 border-b border-gray-200 font-bold text-gray-700 text-center">
+                            {resource.name}
                         </div>
-                    ) : (
-                        filteredReservations.map(res => {
-                            const start = new Date(res.startTime);
-                            const end = new Date(res.endTime);
-                            return (
-                                <div key={res.id} className="flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
-                                    <div className="flex flex-col items-center justify-center w-20 p-2 bg-teylingereind-royal/10 text-teylingereind-royal rounded-lg">
-                                        <span className="text-sm font-bold">
-                                            {start.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                        <span className="text-xs opacity-70">tot</span>
-                                        <span className="text-sm font-bold">
-                                            {end.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-gray-900">{anonymizeText(res.title || "Geen titel")}</h3>
-                                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                                            <User size={14} />
-                                            {res.userName}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => handleDelete(res.id)}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                    ))}
+
+                    {/* Time Slots */}
+                    {TIME_SLOTS.map((slot, index) => (
+                        <>
+                            {/* Time Column */}
+                            <div key={`time-${index}`} className="p-4 border-b border-gray-100 text-sm font-medium text-gray-500 flex items-center justify-center bg-gray-50/50">
+                                {slot.start} - {slot.end}
+                            </div>
+
+                            {/* Resource Columns */}
+                            {RESOURCES.map(resource => {
+                                const reservation = reservations.find(r =>
+                                    r.resourceId === resource.id &&
+                                    format(parseISO(r.startTime), "HH:mm") === slot.start
+                                );
+
+                                return (
+                                    <div
+                                        key={`${resource.id}-${slot.start}`}
+                                        className={`
+                                            p-2 border-b border-gray-100 min-h-[80px] transition-all relative group
+                                            ${reservation
+                                                ? "bg-blue-50 hover:bg-blue-100"
+                                                : "hover:bg-gray-50 cursor-pointer"
+                                            }
+                                        `}
+                                        onClick={() => !reservation && handleSlotClick(resource.id, slot.start, slot.end)}
                                     >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            );
-                        })
-                    )}
+                                        {reservation ? (
+                                            <div className="h-full flex flex-col justify-center items-center text-center">
+                                                <span className="font-bold text-blue-800 text-sm">{reservation.userName}</span>
+                                                {reservation.title && (
+                                                    <span className="text-xs text-blue-600 mt-1">{reservation.title}</span>
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(reservation.id);
+                                                    }}
+                                                    className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                <Plus size={20} className="text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </>
+                    ))}
                 </div>
             </div>
 
             {/* Modal */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"
-                        >
-                            <h2 className="text-xl font-bold mb-6">Nieuwe Reservering</h2>
-                            <div className="space-y-4">
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-bold mb-6 text-gray-900">Nieuwe Reservering</h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Naam</label>
+                                <input
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={formData.userName}
+                                    onChange={e => setFormData({ ...formData, userName: e.target.value })}
+                                    placeholder="Jouw naam"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Groep (Optioneel)</label>
+                                <select
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    value={formData.groupId}
+                                    onChange={e => {
+                                        const group = groups.find(g => g.id === e.target.value);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            groupId: e.target.value,
+                                            title: group ? group.name : prev.title
+                                        }));
+                                    }}
+                                >
+                                    <option value="">Selecteer een groep...</option>
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Ruimte</label>
+                                <select
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    value={formData.resourceId}
+                                    onChange={e => setFormData({ ...formData, resourceId: e.target.value })}
+                                    disabled
+                                >
+                                    {RESOURCES.map(r => (
+                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Naam Medewerker</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
                                     <input
-                                        className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={formData.userName}
-                                        onChange={e => setFormData({ ...formData, userName: e.target.value })}
-                                        placeholder="Wie reserveert?"
+                                        type="date"
+                                        className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                                        value={formData.date}
+                                        disabled
+                                    />
+                                </div>
+                                <div></div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Starttijd</label>
+                                    <input
+                                        type="time"
+                                        className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                                        value={formData.startTime}
+                                        disabled
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Activiteit / Titel</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Eindtijd</label>
                                     <input
-                                        className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={formData.title}
-                                        onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                        placeholder="Bijv. Zaalvoetbal Groep 1"
+                                        type="time"
+                                        className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                                        value={formData.endTime}
+                                        disabled
                                     />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Starttijd</label>
-                                        <input
-                                            type="time"
-                                            className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={formData.startTime}
-                                            onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Eindtijd</label>
-                                        <input
-                                            type="time"
-                                            className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                                            value={formData.endTime}
-                                            onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Annuleren</button>
-                                    <button onClick={handleCreate} className="px-4 py-2 bg-teylingereind-royal text-white rounded-lg hover:bg-blue-700 shadow-md">Bevestigen</button>
                                 </div>
                             </div>
-                        </motion.div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Titel / Activiteit (Optioneel)</label>
+                                <input
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={formData.title}
+                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                    placeholder="Bijv. Zaalvoetbal"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Opmerking (Optioneel)</label>
+                                <textarea
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium">Annuleren</button>
+                                <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-lg shadow-blue-200">Opslaan</button>
+                            </div>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
         </div>
     );
 }

@@ -163,7 +163,7 @@ export async function PUT(request: Request) {
 
         const updateData: any = {};
         if (archived !== undefined) updateData.archived = archived;
-        if (content !== undefined) updateData.content = content;
+        if (content !== undefined) updateData.cleanedText = content;
         // Summary is not in schema directly (it's likely in parsedData or sessionSummary), 
         // but checking schema: Report has sessionSummary String?
         if (summary !== undefined) updateData.sessionSummary = summary;

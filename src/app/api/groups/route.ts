@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         return NextResponse.json(group, { status: 201 });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: (error as z.ZodError).errors }, { status: 400 });
+            return NextResponse.json({ error: (error as z.ZodError).issues }, { status: 400 });
         }
         return NextResponse.json({ error: "Failed to create group" }, { status: 500 });
     }

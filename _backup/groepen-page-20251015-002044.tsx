@@ -57,7 +57,7 @@ export default function GroepenPage() {
   );
 }
 
-function ColorButton({active,label,onClick}:{active?:boolean;label:string;onClick:()=>void}) {
+function ColorButton({ active, label, onClick }: { active?: boolean; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -71,7 +71,7 @@ function ColorButton({active,label,onClick}:{active?:boolean;label:string;onClic
 
 function GroupCard({ group }: { group: Group }) {
   const groupId = useMemo(() => gid(group), [group]);
-  const title = String(group?.naam ?? group?.name ?? groupId || "Onbekend");
+  const title = String((group?.naam ?? group?.name ?? groupId) || "Onbekend");
   const [kleur, setKleur] = useState<string | undefined>(group?.kleur);
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteText, setNoteText] = useState("");
@@ -89,14 +89,14 @@ function GroupCard({ group }: { group: Group }) {
         // Filter leeg/null en sorteer nieuw → oud
         const clean = items
           .filter((n) => n && typeof n.text === "string" && n.text.trim().length > 0 && !n.archived)
-          .sort((a,b)=> (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""));
+          .sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""));
         setNotes(clean);
       } catch { /* negeren */ }
     })();
     return () => { abort = true; };
   }, [groupId]);
 
-  async function setGroupColor(newColor: "groen"|"geel"|"oranje"|"rood") {
+  async function setGroupColor(newColor: "groen" | "geel" | "oranje" | "rood") {
     try {
       setKleur(newColor);
       await fetch(`/api/groepen/${encodeURIComponent(groupId)}`, {
@@ -163,10 +163,10 @@ function GroupCard({ group }: { group: Group }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <ColorButton active={kleur==="groen"}  label="GROEN"  onClick={()=>setGroupColor("groen")} />
-        <ColorButton active={kleur==="geel"}   label="GEEL"   onClick={()=>setGroupColor("geel")} />
-        <ColorButton active={kleur==="oranje"} label="ORANJE" onClick={()=>setGroupColor("oranje")} />
-        <ColorButton active={kleur==="rood"}   label="ROOD"   onClick={()=>setGroupColor("rood")} />
+        <ColorButton active={kleur === "groen"} label="GROEN" onClick={() => setGroupColor("groen")} />
+        <ColorButton active={kleur === "geel"} label="GEEL" onClick={() => setGroupColor("geel")} />
+        <ColorButton active={kleur === "oranje"} label="ORANJE" onClick={() => setGroupColor("oranje")} />
+        <ColorButton active={kleur === "rood"} label="ROOD" onClick={() => setGroupColor("rood")} />
       </div>
 
       <div className="space-y-2">
@@ -174,14 +174,14 @@ function GroupCard({ group }: { group: Group }) {
         <div className="flex gap-2">
           <input
             value={noteText}
-            onChange={(e)=>setNoteText(e.target.value)}
-            onKeyDown={(e)=>{ if(e.key==="Enter") addNote(); }}
+            onChange={(e) => setNoteText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addNote(); }}
             placeholder="Voeg notitie toe…"
             className="flex-1 rounded-md border px-3 py-2 outline-none focus:ring-2 ring-zinc-300"
           />
           <button
             onClick={addNote}
-            disabled={busy || noteText.trim().length===0}
+            disabled={busy || noteText.trim().length === 0}
             className="px-4 py-2 rounded-md bg-emerald-600 text-white font-semibold disabled:opacity-50"
           >
             Toevoegen
@@ -193,14 +193,14 @@ function GroupCard({ group }: { group: Group }) {
           {notes.length === 0 && (
             <div className="text-sm text-zinc-500">Nog geen notities.</div>
           )}
-          {notes.map((n)=>(
+          {notes.map((n) => (
             <div key={n.id} className="flex items-start justify-between rounded-md border border-zinc-200 p-3">
               <div>
                 <div className="text-sm whitespace-pre-wrap">{n.text}</div>
                 <div className="text-xs text-zinc-500 mt-1">{fmtDate(n.createdAt || n.updatedAt)} — Aangemaakt</div>
               </div>
               <button
-                onClick={()=>archiveNote(n.id)}
+                onClick={() => archiveNote(n.id)}
                 className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
                 title="Verbergen/archiveren"
               >

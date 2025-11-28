@@ -26,7 +26,7 @@ export default function MutatiesTable() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/mutaties", { cache: "no-store" });
+        const res = await fetch("/api/sportmutaties?activeOnly=true", { cache: "no-store" });
         const json = res.ok ? await res.json().catch(() => []) : [];
         if (active) setRows(toArray(json));
       } catch {
@@ -44,24 +44,29 @@ export default function MutatiesTable() {
     const list = toArray<Mutatie>(rows);
     const term = q.trim().toLowerCase();
     if (!term) return list;
-    return list.filter((r) => JSON.stringify(r).toLowerCase().includes(term));
+    return list.filter((r) => {
+      const name = r.youth ? `${r.youth.firstName} ${r.youth.lastName}` : (r.youthName || "");
+      const group = r.group?.name || "";
+      const searchStr = `${name} ${group} ${r.reason || ""} ${r.reasonType || ""}`.toLowerCase();
+      return searchStr.includes(term);
+    });
   }, [rows, q]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Mutaties</h3>
-        <TableFilter value={q} onChange={setQ} placeholder="Filter mutaties…" />
+        <TableFilter value={q} onChange={setQ} placeholder="Zoek op naam, groep of reden..." />
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="min-w-[720px] w-full text-sm">
           <thead className="bg-zinc-50 text-zinc-700">
             <tr className="border-b">
-              <th className="px-3 py-2 text-left font-medium">Titel</th>
-              <th className="px-3 py-2 text-left font-medium">Status</th>
+              <th className="px-3 py-2 text-left font-medium">Naam (Groep)</th>
+              <th className="px-3 py-2 text-left font-medium">Type</th>
               <th className="px-3 py-2 text-left font-medium">Datum</th>
-              <th className="px-3 py-2 text-left font-medium">Omschrijving</th>
+              <th className="px-3 py-2 text-left font-medium">Reden</th>
             </tr>
           </thead>
           <tbody>
@@ -79,16 +84,30 @@ export default function MutatiesTable() {
               </tr>
             ) : (
               toArray(filtered).map((r) => (
-                <tr key={r.id} className="border-b">
-                  <td className="px-3 py-2">{r.titel || r.title || "-"}</td>
-                  <td className="px-3 py-2">{r.status || "-"}</td>
-                  <td className="px-3 py-2">
-                    {(r.datum || r.date || "").slice(0, 10) || "-"}
+                <tr key={r.id} className="border-b hover:bg-gray-50">
+                  <td className="px-3 py-2 font-medium">
+                    {r.youth ? (
+                      <span>
+                        {r.youth.firstName} {r.youth.lastName}
+                        <span className="text-gray-400 font-normal ml-1">({r.group?.name || "?"})</span>
+                      </span>
+                    ) : (
+                      <span>
+                        {r.youthName || "Onbekend"}
+                        {r.group?.name && <span className="text-gray-400 font-normal ml-1">({r.group.name})</span>}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
-                    {(r.omschrijving || r.note || "")
-                      .toString()
-                      .slice(0, 120) || "-"}
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      {r.reasonType || "Overig"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-gray-500">
+                    {r.startDate ? new Date(r.startDate).toLocaleDateString('nl-NL') : "-"}
+                  </td>
+                  <td className="px-3 py-2 text-gray-600">
+                    {r.reason || "-"}
                   </td>
                 </tr>
               ))

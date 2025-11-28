@@ -4,11 +4,29 @@ import { getAllSchedules, ScheduleEvent } from "@/lib/schedules";
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export default function SportScheduleTable() {
+type LocationFilter = "ALL" | "EB" | "VLOED";
+
+interface SportScheduleTableProps {
+    locationFilter?: LocationFilter;
+}
+
+export default function SportScheduleTable({ locationFilter = "ALL" }: SportScheduleTableProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const schedules = getAllSchedules();
+    const allSchedules = getAllSchedules();
+
+    // Filter schedules based on location
+    const schedules = locationFilter === "ALL"
+        ? allSchedules
+        : allSchedules.filter(schedule => {
+            if (locationFilter === "EB") {
+                return schedule.location.includes("Eb") || schedule.location.includes("EB");
+            } else if (locationFilter === "VLOED") {
+                return schedule.location.includes("Vloed");
+            }
+            return true;
+        });
 
     // Calculate week range
     const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday
@@ -46,6 +64,17 @@ export default function SportScheduleTable() {
         });
     };
 
+    const [restrictions, setRestrictions] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetch('/api/restrictions')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setRestrictions(data);
+            })
+            .catch(err => console.error("Failed to fetch restrictions", err));
+    }, []);
+
     const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
     const prevWeek = () => setCurrentDate(addDays(currentDate, -7));
 
@@ -54,7 +83,11 @@ export default function SportScheduleTable() {
             {/* Header */}
             <div className="p-6 bg-white/5 border-b border-white/10 flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-white font-serif">Sportrooster</h2>
+                    <h2 className="text-2xl font-bold text-white font-serif">
+                        Sportrooster
+                        {locationFilter === "EB" && " - EB (Oudbouw)"}
+                        {locationFilter === "VLOED" && " - Vloed (Nieuwbouw)"}
+                    </h2>
                     <p className="text-gray-300 text-sm">Week {format(currentDate, "w", { locale: nl })}: {format(start, "d MMM")} - {format(addDays(start, 6), "d MMM yyyy")}</p>
                 </div>
                 <div className="flex gap-2">
@@ -80,13 +113,29 @@ export default function SportScheduleTable() {
                     <tbody>
                         {weekDays.map((day) => {
                             const dayName = format(day, "EEEE", { locale: nl });
-                            const isWeekend = dayName === "zaterdag" || dayName === "zondag";
+                            const dayRestrictions = restrictions.filter(r => {
+                                const start = new Date(r.startDate);
+                                const end = r.endDate ? new Date(r.endDate) : new Date(2100, 0, 1);
+                                return day >= start && day <= end;
+                            });
 
                             return (
                                 <tr key={day.toISOString()} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                     <td className="p-4 border-r border-white/10 font-bold text-white capitalize bg-white/5">
                                         {dayName}
                                         <span className="block text-xs text-gray-400 font-normal">{format(day, "d MMM")}</span>
+
+                                        {/* Restrictions Indicator */}
+                                        {dayRestrictions.length > 0 && (
+                                            <div className="mt-2 space-y-1">
+                                                {dayRestrictions.map(r => (
+                                                    <div key={r.id} className="text-[10px] bg-red-500/20 text-red-200 px-1.5 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                                        {r.youth?.firstName} ({r.group?.name})
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </td>
                                     {timeSlots.map(slot => {
                                         const event = getEvent(day, slot);
@@ -129,6 +178,10 @@ export default function SportScheduleTable() {
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-white/10 border border-white/10 rounded"></div>
                     <span className="text-gray-300">Rust / Pauze</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                    <span className="text-gray-300">Beperking</span>
                 </div>
             </div>
         </div>

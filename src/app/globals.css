@@ -2,178 +2,158 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Huisstijl: Teylingereind groen + Premium UI */
+/* Huisstijl: Teylingereind (Marineblauw + Oranje) */
 :root {
-  --brand: 16 185 129; /* emerald-500 */
-  --brand-600: 5 150 105; /* emerald-600 */
-  --brand-700: 4 120 87; /* emerald-700 */
-  
-  /* Glassmorphism vars */
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --glass-surface: rgba(255, 255, 255, 0.7);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  /* Marine Blue */
+  --brand-blue: #140D4D;
+  --brand-blue-light: #2A216A;
+
+  /* Orange */
+  --brand-orange: #ED4B00;
+  --brand-orange-light: #FF6B26;
+
+  /* Royal Blue (Accent) */
+  --brand-royal: #3E5EFC;
+
+  /* Neutrals */
+  --brand-gray: #F9F9F9;
+  --brand-white: #FFFFFF;
+
+  /* Button Variables */
+  --btn-primary-bg: var(--brand-blue);
+  --btn-primary-hover: var(--brand-blue-light);
+  --btn-secondary-bg: var(--brand-orange);
+  --btn-secondary-hover: var(--brand-orange-light);
+
+  /* Dark Mode Variables */
+  --brand-dark-bg: #0f172a;
+  --brand-dark-surface: #1e293b;
+  --brand-dark-text: #f8fafc;
+}
+
+.dark {
+  --brand-gray: #1e293b;
+  --brand-white: #0f172a;
 }
 
 body {
-  background-color: #f3f4f6;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
+  @apply bg-gray-100 text-gray-900 transition-colors duration-300;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(62, 94, 252, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(237, 75, 0, 0.05) 0px, transparent 50%);
   background-attachment: fixed;
   min-height: 100vh;
+  font-family: var(--font-instrument-sans), sans-serif;
 }
 
-/* Globale button-styling (alle knoppen groen) */
-button,
-.btn {
-  @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium bg-emerald-600 text-white shadow-sm;
-}
-button:hover,
-.btn:hover {
-  @apply bg-emerald-700;
-}
-button:disabled,
-.btn:disabled {
-  @apply opacity-50 cursor-not-allowed;
+.dark body {
+  @apply bg-slate-900 text-gray-100;
+  background-image: none;
 }
 
-/* Subtle card + titel */
-.page-wrap {
-  @apply p-6 space-y-6;
-}
-.page-title {
-  @apply text-2xl font-bold;
-  letter-spacing: -0.01em;
-}
-.page-sub {
-  @apply text-sm text-zinc-500;
-}
-
-/* Chips (kleuren-selector op groepen) – laten eigen kleur zien */
-.chip {
-  @apply px-2 py-1 rounded text-xs border shadow-sm bg-white;
-}
-
-/* Extra huisstijl Teylingereind */
-.btn-green {
-  @apply bg-green-700 hover:bg-green-800 text-white font-medium py-1.5 px-3 rounded;
-}
-
-/* Overdrachten stijl */
-textarea,
-input {
-  @apply focus:ring-2 focus:ring-green-700 outline-none;
-}
-
-/* === Design layer: buttons & badges === */
+/* === Component Layer === */
 @layer components {
+
+  /* Base Button */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  .btn-primary {
-    @apply bg-emerald-600 hover:bg-emerald-700;
-  }
-  .btn-secondary {
-    @apply bg-slate-700 hover:bg-slate-800;
-  }
-  .btn-ghost {
-    @apply bg-transparent text-slate-700 hover:bg-slate-100 border border-slate-200;
-  }
-  .btn-danger {
-    @apply bg-rose-600 hover:bg-rose-700;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-all duration-200 select-none border border-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95;
   }
 
+  /* Primary Button (Marine Blue) */
+  .btn-primary {
+    background-color: var(--brand-blue);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--brand-blue-light);
+    box-shadow: 0 4px 12px rgba(20, 13, 77, 0.2);
+  }
+
+  /* Secondary Button (Orange) */
+  .btn-secondary {
+    background-color: var(--brand-orange);
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--brand-orange-light);
+    box-shadow: 0 4px 12px rgba(237, 75, 0, 0.2);
+  }
+
+  /* Outline Button */
+  .btn-outline {
+    @apply bg-white text-gray-900 border border-gray-200;
+  }
+
+  .btn-outline:hover {
+    @apply bg-gray-50 border-gray-300;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+
+  /* Badges */
   .badge {
-    @apply inline-flex items-center px-2 h-6 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  .badge-green {
-    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+
+  .badge-blue {
+    @apply bg-blue-50 text-blue-700 border border-blue-100;
   }
-  .badge-indigo {
-    @apply bg-indigo-50 text-indigo-700 border border-indigo-200;
-  }
-  .badge-muted {
-    @apply bg-slate-100 text-slate-600 border border-slate-200;
+
+  .badge-orange {
+    @apply bg-orange-50 text-orange-700 border border-orange-100;
   }
 }
 
-/* === Sportmomenten groene knoppen (force) === */
+/* === Sportmomenten Override (Was Green, Now Blue/Orange) === */
 [data-page="sportmomenten"] button,
 [data-page="sportmomenten"] .btn,
 [data-page="sportmomenten"] a[role="button"] {
-  @apply bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-700;
+  /* Remove forced green styles */
 }
 
-/* === Toggle-cellen sportmomenten === */
-[data-page="sportmomenten"] table .toggle-cell{
-  background:#fff !important;
-  color:inherit !important;
-  width:2.5rem; height:2.5rem;
-  border:1px solid rgba(0,0,0,0.1);
-  border-radius:0.5rem;
-  display:flex; align-items:center; justify-content:center;
-  font-size:1.25rem; line-height:1; cursor:pointer;
-  user-select:none;
-}
-[data-page="sportmomenten"] table .toggle-cell.on{
-  background:#ecfdf5 !important;          /* emerald-50 */
-  color:#065f46 !important;               /* emerald-700 */
-  border-color:#059669 !important;        /* emerald-600 */
-  font-weight:700;
+/* === Toggle Cells (Turven) === */
+.toggle-cell {
+  @apply w-10 h-10 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 border border-gray-200 bg-white text-gray-300 hover:bg-gray-50;
 }
 
-/*== BTN-HUISSTIJL ==*/
-:root{
-  /* Pas deze 3 variabelen aan voor je huisstijl */
-  --brand-600: #2563eb; /* primair (bv. blauw-600) */
-  --brand-700: #1d4ed8; /* hover */
-  --brand-ring: 0 0% 100%; /* ring kleur op dark/bg */
+.toggle-cell.on {
+  @apply bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200 font-bold;
 }
 
-/* Basis button */
-@layer components{
-  .btn{
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium
-           transition-colors select-none border border-transparent focus:outline-none
-           disabled:opacity-50 disabled:cursor-not-allowed shadow-sm;
-    box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  }
-  .btn:focus-visible{
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, .2); /* focus ring */
-  }
-  /* Variants */
-  .btn-primary{
-    color: #fff;
-    background: var(--brand-600);
-  }
-  .btn-primary:hover{ background: var(--brand-700); }
+/* === Custom Scrollbar === */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
 
-  .btn-secondary{
-    @apply bg-gray-100 text-gray-900;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 20px;
+}
+
+/* === Animations === */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
   }
-  .btn-secondary:hover{ @apply bg-gray-200; }
-
-  .btn-outline{
-    @apply bg-white text-gray-900 border border-gray-300;
+  100% {
+    transform: translateX(200%);
   }
-  .btn-outline:hover{ @apply bg-gray-50; }
+}
 
-  .btn-ghost{
-    @apply bg-transparent text-gray-800;
-  }
-  .btn-ghost:hover{ @apply bg-gray-100; }
-
-  .btn-danger{
-    @apply bg-red-600 text-white;
-  }
-  .btn-danger:hover{ @apply bg-red-700; }
-
-  /* Maten */
-  .btn-sm{ @apply text-sm px-3 py-1.5; }
-  .btn-lg{ @apply text-base px-5 py-2.5; }
-
-  /* Icon only */
-  .btn-icon{ @apply p-2 rounded-xl w-9 h-9; }
+.animate-shimmer {
+  animation: shimmer 2s infinite;
 }

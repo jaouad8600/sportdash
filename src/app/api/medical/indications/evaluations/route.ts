@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 
 // POST: Create a new evaluation for an indication
 export async function POST(request: Request) {
+    // TODO: This route uses legacy JSON evaluations - should use relational Evaluation model instead
+    // See /api/indicaties/[id]/evaluaties/route.ts for the new implementation
+    return NextResponse.json({ error: "This endpoint is deprecated - use /api/indicaties/[id]/evaluaties instead" }, { status: 410 });
+
+    /* Legacy implementation - removed
     try {
         const body = await request.json();
         const { indicationId, notes, createdBy } = body;
@@ -17,6 +22,7 @@ export async function POST(request: Request) {
         // Check if indication exists
         const indication = await prisma.sportIndication.findUnique({
             where: { id: indicationId },
+            include: { evaluations: true },
         });
 
         if (!indication) {
@@ -54,10 +60,16 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
+    */
 }
 
 // GET: Fetch all evaluations for an indication
 export async function GET(request: Request) {
+    // TODO: This route uses legacy JSON evaluations - should use relational Evaluation model instead
+    // See /api/indicaties/[id]/evaluaties/route.ts for the new implementation
+    return NextResponse.json({ error: "This endpoint is deprecated - use /api/indicaties/[id]/evaluaties instead" }, { status: 410 });
+
+    /* Legacy implementation - removed
     try {
         const { searchParams } = new URL(request.url);
         const indicationId = searchParams.get("indicationId");
@@ -89,4 +101,5 @@ export async function GET(request: Request) {
             { status: 500 }
         );
     }
+    */
 }

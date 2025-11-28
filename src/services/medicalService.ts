@@ -44,6 +44,9 @@ export async function getActiveMutations(groupId?: string, date?: Date) {
         include: {
             youth: true,
             group: true,
+            evaluations: {
+                orderBy: { createdAt: 'desc' }
+            }
         },
         orderBy: { startDate: "desc" },
     });
@@ -115,6 +118,9 @@ export async function getActiveIndications(groupId?: string, date?: Date) {
         include: {
             youth: true,
             group: true,
+            evaluations: {
+                orderBy: { createdAt: 'desc' }
+            }
         },
         orderBy: { validFrom: "desc" },
     });

@@ -39,7 +39,7 @@ export async function GET() {
                 type: "MUTATION",
                 action: m.createdAt.getTime() === m.updatedAt.getTime() ? "CREATE" : "UPDATE",
                 title: `Sportmutatie ${m.reasonType}`,
-                details: `${m.reason} voor ${m.youth.firstName} ${m.youth.lastName} (${m.group.name})`,
+                details: `${m.reason} voor ${m.youth?.firstName || "Onbekend"} ${m.youth?.lastName || ""} (${m.group.name})`,
                 user: "Huidige Gebruiker", // In a real app, fetch user name
                 timestamp: m.updatedAt,
             })),
@@ -48,7 +48,7 @@ export async function GET() {
                 type: "INDICATION",
                 action: i.createdAt.getTime() === i.updatedAt.getTime() ? "CREATE" : "UPDATE",
                 title: `Indicatie ${i.type}`,
-                details: `${i.description} voor ${i.youth.firstName} ${i.youth.lastName} (${i.group.name})`,
+                details: `${i.description} voor ${i.youth?.firstName || "Onbekend"} ${i.youth?.lastName || ""} (${i.group.name})`,
                 user: "Huidige Gebruiker",
                 timestamp: i.updatedAt,
             })),

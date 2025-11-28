@@ -1,27 +1,29 @@
 import { NextResponse } from "next/server";
-import { readDb, updateItem, deleteItem } from "@/lib/db";
+import { getPlanningItem, updatePlanning, removePlanning } from "@/server/store";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const db = await readDb();
-  const item = db.planning.items.find((i) => i.id === params.id);
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const item = await getPlanningItem(id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(item);
 }
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const partial = await req.json();
-  const item = await updateItem(params.id, partial);
+  const item = await updatePlanning(id, partial);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(item);
 }
 
 export async function DELETE(
   _: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const ok = await deleteItem(params.id);
-  return NextResponse.json({ ok });
+  const { id } = await params;
+  await removePlanning(id);
+  return NextResponse.json({ ok: true });
 }

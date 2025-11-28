@@ -1,108 +1,85 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 
-// GET /api/restorative-talks - Fetch talks (optionally by groupId, status, archived)
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { RestorativeTalkStatus } from '@prisma/client';
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const groupId = searchParams.get("groupId");
-        const status = searchParams.get("status");
-        const includeArchived = searchParams.get("includeArchived") === "true";
+        const status = searchParams.get('status') as RestorativeTalkStatus | null;
 
-        const where: any = {};
-
-        if (groupId) {
-            where.groupId = groupId;
-        }
+        const whereClause: any = {
+            archived: false,
+        };
 
         if (status) {
-            where.status = status;
-        }
-
-        if (!includeArchived) {
-            where.archived = false;
+            whereClause.status = status;
+        } else {
+            // Default to pending if not specified
+            whereClause.status = RestorativeTalkStatus.PENDING;
         }
 
         const talks = await prisma.restorativeTalk.findMany({
-            where,
-            orderBy: { createdAt: "desc" },
+            where: whereClause,
+            include: {
+                group: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
         });
 
         return NextResponse.json(talks);
     } catch (error) {
-        console.error("Error fetching restorative talks:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch restorative talks" },
-            { status: 500 }
-        );
+        console.error('Error fetching restorative talks:', error);
+        return NextResponse.json({ error: 'Er is iets misgegaan' }, { status: 500 });
     }
 }
 
-// POST /api/restorative-talks - Create new talk
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { groupId, youthName, reason, createdBy } = body;
 
-        if (!groupId || !youthName || !youthName.trim()) {
-            return NextResponse.json(
-                { error: "groupId and youthName are required" },
-                { status: 400 }
-            );
+        if (!groupId || !youthName) {
+            return NextResponse.json({ error: 'Vul alle verplichte velden in' }, { status: 400 });
         }
 
         const talk = await prisma.restorativeTalk.create({
             data: {
                 groupId,
-                youthName: youthName.trim(),
-                reason: reason || "",
-                createdBy: createdBy || "system",
-                status: "PENDING",
+                youthName,
+                reason,
+                createdBy,
+                status: RestorativeTalkStatus.PENDING,
             },
         });
 
-        return NextResponse.json(talk, { status: 201 });
+        return NextResponse.json(talk);
     } catch (error) {
-        console.error("Error creating restorative talk:", error);
-        return NextResponse.json(
-            { error: "Failed to create restorative talk" },
-            { status: 500 }
-        );
+        console.error('Error creating restorative talk:', error);
+        return NextResponse.json({ error: 'Er is iets misgegaan' }, { status: 500 });
     }
 }
 
-// PUT /api/restorative-talks - Update talk status
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const { id, status, failureReason, archived } = body;
+        const { id, status, failureReason } = body;
 
         if (!id) {
-            return NextResponse.json(
-                { error: "id is required" },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'ID is verplicht' }, { status: 400 });
         }
 
         const updateData: any = {};
-
-        if (status) {
-            updateData.status = status;
-
-            if (status === "COMPLETED") {
-                updateData.completedAt = new Date();
-            }
-
-            if (status === "FAILED" && failureReason) {
-                updateData.failureReason = failureReason;
-            }
-        }
-
-        if (archived !== undefined) {
-            updateData.archived = archived;
-            if (archived) {
-                updateData.archivedAt = new Date();
-            }
+        if (status) updateData.status = status;
+        if (failureReason !== undefined) updateData.failureReason = failureReason;
+        if (status === RestorativeTalkStatus.COMPLETED) {
+            updateData.completedAt = new Date();
         }
 
         const talk = await prisma.restorativeTalk.update({
@@ -112,37 +89,7 @@ export async function PUT(request: Request) {
 
         return NextResponse.json(talk);
     } catch (error) {
-        console.error("Error updating restorative talk:", error);
-        return NextResponse.json(
-            { error: "Failed to update restorative talk" },
-            { status: 500 }
-        );
-    }
-}
-
-// DELETE /api/restorative-talks - Delete talk
-export async function DELETE(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get("id");
-
-        if (!id) {
-            return NextResponse.json(
-                { error: "id is required" },
-                { status: 400 }
-            );
-        }
-
-        await prisma.restorativeTalk.delete({
-            where: { id },
-        });
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Error deleting restorative talk:", error);
-        return NextResponse.json(
-            { error: "Failed to delete restorative talk" },
-            { status: 500 }
-        );
+        console.error('Error updating restorative talk:', error);
+        return NextResponse.json({ error: 'Er is iets misgegaan' }, { status: 500 });
     }
 }

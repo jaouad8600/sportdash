@@ -32,76 +32,100 @@ export const getDailyReports = async (date: Date) => {
 };
 
 export const generateDailySummary = async (date: Date) => {
-    const reports = await getDailyReports(date);
-
-    // Group reports by group name
-    const reportsByGroup: Record<string, typeof reports> = {};
-    const incidents: typeof reports = [];
-
-    reports.forEach(report => {
-        if (report.isIncident) {
-            incidents.push(report);
-        }
-
-        const groupName = report.group?.name || "Algemeen";
-        if (!reportsByGroup[groupName]) {
-            reportsByGroup[groupName] = [];
-        }
-        reportsByGroup[groupName].push(report);
+    const reports = await prisma.report.findMany({
+        where: {
+            date: {
+                gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+                lte: new Date(new Date(date).setHours(23, 59, 59, 999)),
+            },
+        },
+        include: {
+            group: true,
+            youth: true,
+            indication: true,
+            restriction: true,
+        },
+        orderBy: {
+            createdAt: "asc",
+        },
     });
 
-    // Generate Markdown/Text content
-    let summary = `DAGRAPPORTAGE - ${date.toLocaleDateString('nl-NL')}\n\n`;
+    let summary = `Bij deze de sportrapportage,\n\n`;
 
-    for (const [groupName, groupReports] of Object.entries(reportsByGroup)) {
-        summary += `### ${groupName}\n`;
-        if (groupReports.length === 0) {
-            summary += `- Geen activiteiten.\n`;
-        } else {
-            groupReports.forEach(r => {
-                const time = new Date(r.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-                summary += `- [${time}] [${r.type}] ${r.content} (${r.author || 'Onbekend'})\n`;
-            });
+    // 1. Group Reports (Type = SESSION or GENERAL or WARMING_UP, but usually SESSION for main report)
+    // We filter for reports that have a Group but NO youth/indication/restriction specific focus, 
+    // OR are explicitly marked as Group reports. 
+    // The form will likely set type=SESSION for group reports.
+    // 1. Group Reports
+    const groupReports = reports.filter(r => r.type === 'SESSION' || r.type === 'WARMING_UP' || r.type === 'GENERAL');
+
+    for (const r of groupReports) {
+        const groupName = r.group?.name || "Onbekend";
+        const youthCount = r.youthCount || 0;
+        const glCount = r.leaderCount || 0;
+        const warmingUp = r.warmingUp || "nvt";
+        const sportmoment = r.activity || "nvt";
+        const bijzonderheden = r.cleanedText || r.sessionSummary || r.notes || "Geen";
+
+        summary += `Groep: ${groupName} (${youthCount} jongeren, ${glCount}-GL)\n\n`;
+        summary += `Warming-up: ${warmingUp}\n`;
+        summary += `Sportmoment: ${sportmoment}\n`;
+        summary += `Bijzonderheden: ${bijzonderheden}\n\n`;
+    }
+
+    // 2. Indication Reports
+    const indicationReports = reports.filter(r => r.type === "INDICATION");
+
+    if (indicationReports.length > 0) {
+        // summary += `--- INDICATIES ---\n\n`; // Optional separator
+        for (const r of indicationReports) {
+            const youthName = r.youth ? `${r.youth.firstName} ${r.youth.lastName}` : (r.rawText || "Onbekend");
+            const warmingUp = r.warmingUp || "nvt";
+            const sportmoment = r.activity || "nvt";
+            const bijzonderheden = r.cleanedText || r.sessionSummary || "Geen";
+
+            summary += `Indicatie – ${youthName}\n`;
+            summary += `Warming-up: ${warmingUp}\n`;
+            summary += `Sportmoment: ${sportmoment}\n`;
+            summary += `Bijzonderheden: ${bijzonderheden}\n\n`;
+        }
+    }
+
+    // 3. Restriction Reports
+    const restrictionReports = reports.filter(r => r.type === "RESTRICTION");
+
+    if (restrictionReports.length > 0) {
+        // summary += `--- BEPERKINGEN ---\n\n`; // Optional separator
+        for (const r of restrictionReports) {
+            const youthName = r.youth ? `${r.youth.firstName} ${r.youth.lastName}` : (r.rawText || "Onbekend");
+            const warmingUp = r.warmingUp || "nvt";
+            const sportmoment = r.activity || "nvt";
+            const bijzonderheden = r.cleanedText || r.sessionSummary || "Geen";
+
+            summary += `Beperking – ${youthName}\n`;
+            summary += `Warming-up: ${warmingUp}\n`;
+            summary += `Sportmoment: ${sportmoment}\n`;
+            summary += `Bijzonderheden: ${bijzonderheden}\n\n`;
+        }
+    }
+
+    // 4. Incidents
+    const incidents = reports.filter(r => r.isIncident || r.type === "INCIDENT");
+    if (incidents.length > 0) {
+        summary += `### INCIDENTEN\n`;
+        for (const i of incidents) {
+            summary += `- ${i.group?.name || 'Algemeen'}: ${i.cleanedText || i.sessionSummary || 'Geen details'}\n`;
         }
         summary += `\n`;
     }
 
-    if (incidents.length > 0) {
-        summary += `### INCIDENTEN\n`;
-        incidents.forEach(i => {
-            const time = new Date(i.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-            summary += `- [${time}] ${i.group?.name || 'Algemeen'}: ${i.content}\n`;
-        });
-    } else {
-        summary += `### INCIDENTEN\n- Geen incidenten gemeld.\n`;
-    }
-
-    // Save or update DailySummary
+    // Save DailySummary
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 
-    // Check if summary exists for this day
-    const existing = await prisma.dailySummary.findFirst({
-        where: {
-            date: startOfDay // Ideally this should be a unique constraint on date only (without time), but for now assuming date stored is start of day or we query by range
-        }
-    });
-
-    // For simplicity in this MVP, let's assume we upsert based on a unique date if we enforced it, 
-    // but since date is DateTime, we might need to be careful. 
-    // The schema says `date DateTime @unique`, so we should normalize to midnight.
-
     return await prisma.dailySummary.upsert({
-        where: {
-            date: startOfDay,
-        },
-        update: {
-            content: summary,
-            generatedAt: new Date(),
-        },
-        create: {
-            date: startOfDay,
-            content: summary,
-        },
+        where: { date: startOfDay },
+        update: { content: summary, generatedAt: new Date() },
+        create: { date: startOfDay, content: summary },
     });
 };

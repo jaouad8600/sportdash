@@ -48,6 +48,11 @@ export default function GroupDetailPage() {
     const [talks, setTalks] = useState<RestorativeTalk[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // New Counts State
+    const [mutationCount, setMutationCount] = useState(0);
+    const [indicationCount, setIndicationCount] = useState(0);
+    const [restrictionCount, setRestrictionCount] = useState(0);
+
     // Notes State
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
     const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -70,7 +75,11 @@ export default function GroupDetailPage() {
                 fetch(`/api/groups?id=${groupId}`),
                 fetch(`/api/reports?groupId=${groupId}`),
                 fetch(`/api/groups/notes?groupId=${groupId}`),
-                fetch(`/api/restorative-talks?groupId=${groupId}`)
+                fetch(`/api/restorative-talks?groupId=${groupId}`),
+                // New fetches
+                fetch(`/api/mutaties?groupId=${groupId}`),
+                fetch(`/api/indicaties?groupId=${groupId}`),
+                fetch(`/api/restrictions?groupId=${groupId}`)
             ]);
 
             const groupsData = await groupRes.json();
@@ -82,6 +91,17 @@ export default function GroupDetailPage() {
             setReports(await reportsRes.json());
             setNotes(await notesRes.json());
             setTalks(await talksRes.json());
+
+            // Set counts
+            // Assuming APIs return arrays. If they return objects with 'items', adjust accordingly.
+            // For safety, check if array.
+            const muts = await (arguments[4] as Promise<Response>).then(r => r.json()).catch(() => []);
+            const inds = await (arguments[5] as Promise<Response>).then(r => r.json()).catch(() => []);
+            const rests = await (arguments[6] as Promise<Response>).then(r => r.json()).catch(() => []);
+
+            setMutationCount(Array.isArray(muts) ? muts.filter((m: any) => m.isActive).length : 0);
+            setIndicationCount(Array.isArray(inds) ? inds.filter((i: any) => i.isActive).length : 0);
+            setRestrictionCount(Array.isArray(rests) ? rests.filter((r: any) => r.isActive).length : 0);
         } catch (error) {
             console.error("Error fetching data", error);
         } finally {
@@ -275,6 +295,22 @@ export default function GroupDetailPage() {
                         </div>
                     </div>
 
+                    {/* Medical & Restrictions KPIs */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
+                            <p className="text-2xl font-bold text-purple-600">{mutationCount}</p>
+                            <p className="text-xs text-gray-500 mt-1 font-medium">Mutaties</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
+                            <p className="text-2xl font-bold text-blue-600">{indicationCount}</p>
+                            <p className="text-xs text-gray-500 mt-1 font-medium">Indicaties</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-center">
+                            <p className="text-2xl font-bold text-red-600">{restrictionCount}</p>
+                            <p className="text-xs text-gray-500 mt-1 font-medium">Beperkingen</p>
+                        </div>
+                    </div>
+
                     {/* Notes Section */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
                         <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
@@ -423,9 +459,9 @@ export default function GroupDetailPage() {
                                             </p>
 
                                             <div className="flex flex-wrap gap-2">
-                                                {parsed?.mood && (
+                                                {parsed?.atmosphere && (
                                                     <span className="text-xs font-medium bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg">
-                                                        Sfeer: {parsed.mood}
+                                                        Sfeer: {parsed.atmosphere}
                                                     </span>
                                                 )}
                                                 {/* Removed Attendance Badge as requested */}

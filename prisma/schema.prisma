@@ -8,12 +8,27 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  role      Role     @default(BEGELEIDER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  username    String   @unique // Changed from name to username for login
+  name        String   // Display name
+  email       String?  @unique // Optional now, username is primary
+  password    String   // Hashed password
+  role        Role     @default(SPORTBEGELEIDER)
+  isActive    Boolean  @default(true)
+  permissions String?  // JSON string for granular permissions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  BEHEERDER         // ADMIN
+  SPORTBEGELEIDER
+  GROEPSLEIDING
+  TEAMLEIDER
+  SPORTDOCENT
+  BEGELEIDER
+  GROEPSLEIDER
+  AV_MT
 }
 
 model Youth {
@@ -28,6 +43,8 @@ model Youth {
   mutations   SportMutation[]
   indications SportIndication[]
   incidents   Incident[]
+  restrictions Restriction[]
+  reports      Report[]
 }
 
 model Group {
@@ -55,6 +72,9 @@ model Group {
   indications   SportIndication[]
   materialUsage MaterialUsage[]
   incidents     Incident[]
+  restrictions  Restriction[]
+  loans         Loan[]
+  reservations  Reservation[]
 }
 
 model Note {
@@ -124,6 +144,13 @@ model Report {
   // Medical Extensions
   indicationId    String?
   indication      SportIndication? @relation(fields: [indicationId], references: [id])
+  
+  restrictionId   String?
+  restriction     Restriction?     @relation(fields: [restrictionId], references: [id])
+  
+  youthId         String?
+  youth           Youth?           @relation(fields: [youthId], references: [id])
+  
   materialUsage   MaterialUsage[]
   
   createdAt   DateTime   @default(now())
@@ -142,6 +169,14 @@ model Incident {
   description String
   alarmPressed Boolean @default(false)
   afterCare   String?
+
+  // New fields
+  staffShare        String? // Wat was het aandeel van de GL?
+  deescalation      String? // Hoe is er uiteindelijk gedeëscaleerd?
+  returnProcess     String? // Hoe is de terugverplaatsing verlopen?
+  debriefing        String? // Is de situatie nabesproken met de betrokken GL?
+  restorativeAction String? // Is een herstel wenselijk en zo ja, is hiervoor een lijntje gelegd met de GL?
+  teamLeaderContact String? // Contact met eigen teamleider?
   
   authorId    String?
   createdAt   DateTime @default(now())
@@ -197,13 +232,15 @@ model Document {
 
 model SportMutation {
   id          String             @id @default(uuid())
-  youthId     String
-  youth       Youth              @relation(fields: [youthId], references: [id])
+  youthId     String?            // Made optional for group-level mutations
+  youth       Youth?             @relation(fields: [youthId], references: [id])
   groupId     String
   group       Group              @relation(fields: [groupId], references: [id])
   
   reason      String
   reasonType  MutationReasonType
+  restriction String?            // "TOTAAL_SPORTVERBOD" | "ALLEEN_FITNESS"
+  injuryDetails String?          // Specific injury details (e.g. "Broken hand")
   
   startDate   DateTime
   endDate     DateTime?          // Null = tot nader order
@@ -216,8 +253,8 @@ model SportMutation {
 
 model SportIndication {
   id          String          @id @default(uuid())
-  youthId     String
-  youth       Youth           @relation(fields: [youthId], references: [id])
+  youthId     String?         // Made optional for group-level indications
+  youth       Youth?          @relation(fields: [youthId], references: [id])
   groupId     String
   group       Group           @relation(fields: [groupId], references: [id])
   
@@ -248,8 +285,11 @@ model SportIndication {
   archived    Boolean         @default(false)
   archivedAt  DateTime?
   
-  // Evaluations stored as JSON
-  evaluations Json?           @default("[]")
+  // Evaluations stored as JSON (Legacy)
+  evaluationsJson Json?           @default("[]") @map("evaluations")
+  
+  // New relational evaluations
+  evaluations     Evaluation[]
   
   reports     Report[]
   
@@ -257,13 +297,7 @@ model SportIndication {
   updatedAt   DateTime        @updatedAt
 }
 
-enum Role {
-  SPORTDOCENT
-  BEGELEIDER
-  GROEPSLEIDER
-  AV_MT
-  BEHEERDER
-}
+
 
 enum GroupStatus {
   ACTIVE
@@ -277,6 +311,8 @@ enum ReportType {
   BEHAVIOR
   INCIDENT
   GENERAL
+  INDICATION
+  RESTRICTION
 }
 
 enum GroupColor {
@@ -331,7 +367,14 @@ model Material {
   quantityTotal   Int             @default(0)
   quantityUsable  Int             @default(0)
   location        String
+  subLocation     String?         // e.g. "Fitness", "Sporthal", "Dojo"
+  imageUrl        String?
   conditionStatus ConditionStatus @default(GOED)
+  
+  // New fields for detailed tracking
+  quantityBroken  Int             @default(0)
+  quantityToOrder Int             @default(0)
+  
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   
@@ -386,6 +429,12 @@ model Loan {
   
   status      LoanStatus @default(ACTIVE)
   notes       String?
+  
+  // New fields for Library Planning
+  groupId     String?
+  group       Group?    @relation(fields: [groupId], references: [id])
+  startTime   DateTime? // For specific timeslots
+  endTime     DateTime?
 }
 
 enum LoanStatus {
@@ -405,6 +454,10 @@ model Reservation {
   userId      String    // Staff ID
   userName    String    // Staff Name
   
+  // New field for Group selection
+  groupId     String?
+  group       Group?    @relation(fields: [groupId], references: [id])
+  
   startTime   DateTime
   endTime     DateTime
   
@@ -413,4 +466,63 @@ model Reservation {
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Restriction {
+  id          String    @id @default(uuid())
+  youthId     String
+  youth       Youth     @relation(fields: [youthId], references: [id])
+  groupId     String
+  group       Group     @relation(fields: [groupId], references: [id])
+  
+  reason      String
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  reports     Report[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  channel   String
+  sender    String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model File {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  type      String
+  size      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Evaluation {
+  id           String          @id @default(uuid())
+  indicationId String
+  indication   SportIndication @relation(fields: [indicationId], references: [id], onDelete: Cascade)
+  date         DateTime        @default(now())
+  summary      String
+  author       String?
+  emailedAt    DateTime?       // Track when the evaluation was emailed
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model PhoneNumber {
+  id          String   @id @default(uuid())
+  department  String   // Afdeling
+  location    String   // Ruimte
+  number      String   // Nummer
+  description String?  // Omschrijving
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

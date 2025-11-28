@@ -65,6 +65,7 @@ type DBShape = {
   mutaties: Mutatie[];
   overdrachten: Overdracht[];
   planning: { items: PlanningItem[] };
+  materialen?: { id: string; naam: string; aantal: number; categorie?: string }[];
 };
 
 const EB = ["Poel", "Lier", "Zijl", "Nes", "Vliet", "Gaag", "Kust", "Golf"];
@@ -158,6 +159,14 @@ export async function addGroepNotitie(
   });
   await writeDB(db);
   return g;
+}
+
+export async function deleteNote(groepId: string, noteId: string): Promise<void> {
+  const db = await readDB();
+  const g = db.groepen.list.find((x) => x.id === groepId);
+  if (!g) throw new Error("groep niet gevonden");
+  g.notities = g.notities.filter((n) => n.id !== noteId);
+  await writeDB(db);
 }
 
 /* ===== Indicaties ===== */
@@ -259,6 +268,10 @@ export async function listPlanningByDate(
   const db = await readDB();
   return db.planning.items.filter((x) => x.date === date);
 }
+export async function getPlanningItem(id: string): Promise<PlanningItem | undefined> {
+  const db = await readDB();
+  return db.planning.items.find((x) => x.id === id);
+}
 export async function addPlanning(
   inp: Partial<PlanningItem>,
 ): Promise<PlanningItem> {
@@ -331,4 +344,61 @@ export async function removeOverdracht(id: string): Promise<void> {
   const db = await readDB();
   db.overdrachten = db.overdrachten.filter((x) => x.id !== id);
   await writeDB(db);
+}
+
+/* ===== Materialen ===== */
+export type Materiaal = {
+  id: string;
+  naam: string;
+  aantal: number;
+  categorie?: string;
+};
+
+export async function listMaterialen(): Promise<Materiaal[]> {
+  const db = await readDB();
+  return db.materialen || [];
+}
+
+export async function addMateriaal(inp: Partial<Materiaal>): Promise<Materiaal> {
+  const db = await readDB();
+  const rec: Materiaal = {
+    id: randomUUID(),
+    naam: inp.naam || "Naamloos",
+    aantal: inp.aantal || 0,
+    categorie: inp.categorie,
+  };
+  db.materialen = db.materialen || [];
+  db.materialen.push(rec);
+  await writeDB(db);
+  return rec;
+}
+
+export async function updateMateriaal(id: string, patch: Partial<Materiaal>): Promise<Materiaal> {
+  const db = await readDB();
+  db.materialen = db.materialen || [];
+  const m = db.materialen.find(x => x.id === id);
+  if (!m) throw new Error("Materiaal niet gevonden");
+  Object.assign(m, patch);
+  await writeDB(db);
+  return m;
+}
+
+export async function deleteMateriaal(id: string): Promise<void> {
+  const db = await readDB();
+  db.materialen = (db.materialen || []).filter(x => x.id !== id);
+  await writeDB(db);
+}
+
+/* ===== Stats ===== */
+export async function getCountsByGroup() {
+  const db = await readDB();
+  // Dummy implementation or calculate from indications/mutations
+  const counts: Record<string, { indications: number; mutations: number }> = {};
+  for (const g of db.groepen.list) {
+    counts[g.id] = {
+      indications: db.indicaties.filter(i => i.groepId === g.id && i.status === 'open').length,
+      mutations: db.mutaties.filter(m => m.groepId === g.id && m.status === 'open').length,
+    };
+  }
+  return counts;
 }

@@ -47,45 +47,92 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  // accepteer zowel vlak als { item: {...} }
-  const j = body?.item ? body.item : body;
 
-  const groepId = j.groepId || j.groupId;
-  const date = j.date;      // verwacht 'YYYY-MM-DD'
-  const value = typeof j.value === "boolean" ? j.value : j.checked === true ? true : !!j.v; // een paar aliassen
+  // Nieuwe velden voor uitgebreid sportmoment
+  const groupId = body.groupId || body.groepId;
+  const date = body.date;
+  const startTime = body.startTime;
+  const endTime = body.endTime;
+  const location = body.location;
+  const title = body.title || body.description;
+  const type = body.type || "SPORT"; // Default type
 
-  if (!groepId || !date) {
-    return NextResponse.json({ error: "groepId en date zijn verplicht" }, { status: 400, headers });
+  // Validatie verplichte velden
+  if (!groupId) {
+    return NextResponse.json(
+      { error: "Groep is verplicht" },
+      { status: 400, headers }
+    );
+  }
+
+  if (!date) {
+    return NextResponse.json(
+      { error: "Datum is verplicht" },
+      { status: 400, headers }
+    );
+  }
+
+  if (!startTime) {
+    return NextResponse.json(
+      { error: "Starttijd is verplicht" },
+      { status: 400, headers }
+    );
+  }
+
+  if (!endTime) {
+    return NextResponse.json(
+      { error: "Eindtijd is verplicht" },
+      { status: 400, headers }
+    );
+  }
+
+  // Valideer dat eindtijd na starttijd ligt
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+
+  if (endMinutes <= startMinutes) {
+    return NextResponse.json(
+      { error: "Eindtijd moet na starttijd liggen" },
+      { status: 400, headers }
+    );
   }
 
   const now = new Date().toISOString();
   const db = await readDB();
-  db.sportmomenten = db.sportmomenten && Array.isArray(db.sportmomenten.items) ? db.sportmomenten : { items: [] };
+  db.sportmomenten = db.sportmomenten && Array.isArray(db.sportmomenten.items)
+    ? db.sportmomenten
+    : { items: [] };
 
-  const idx = db.sportmomenten.items.findIndex(
-    (x: any) => (x.groepId || x.groupId) === groepId && x.date === date
-  );
+  // Genereer uniek ID
+  const id = `${groupId}#${date}#${startTime}`;
 
-  if (idx >= 0) {
-    db.sportmomenten.items[idx] = {
-      ...db.sportmomenten.items[idx],
-      groepId,
-      date,
-      value,
-      updatedAt: now,
-    };
-  } else {
-    db.sportmomenten.items.push({
-      id: `${groepId}#${date}`,
-      groepId,
-      date,
-      value,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
+  // Maak nieuw sportmoment
+  const newMoment = {
+    id,
+    groupId,
+    date,
+    startTime,
+    endTime,
+    location: location || null,
+    title: title || null,
+    type,
+    status: "PENDING",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  db.sportmomenten.items.push(newMoment);
 
   await writeDB(db);
-  const saved = db.sportmomenten.items.find((x: any) => (x.groepId || x.groupId) === groepId && x.date === date);
-  return NextResponse.json({ ok: true, item: saved }, { headers });
+
+  return NextResponse.json(
+    { ok: true, item: newMoment },
+    { headers }
+  );
+}
+
+// Helper functie om tijd te converteren naar minuten
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
 }

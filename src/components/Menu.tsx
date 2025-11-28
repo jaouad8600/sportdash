@@ -99,6 +99,12 @@ const menuItems = [
       },
       {
         icon: "/setting.png",
+        label: "Back-up",
+        href: "/back-up",
+        visible: ["admin"],
+      },
+      {
+        icon: "/setting.png",
         label: "Instellingen",
         href: "/settings",
         visible: ["admin", "teacher", "student", "parent"],

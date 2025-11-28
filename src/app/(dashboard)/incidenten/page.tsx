@@ -13,7 +13,8 @@ import {
     CheckCircle,
     XCircle,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,10 +32,19 @@ interface Incident {
     description: string;
     alarmPressed: boolean;
     afterCare: string | null;
+    staffShare: string | null;
+    deescalation: string | null;
+    returnProcess: string | null;
+    debriefing: string | null;
+    restorativeAction: string | null;
+    teamLeaderContact: string | null;
     authorId: string;
 }
 
+import { useSearchParams } from 'next/navigation';
+
 export default function IncidentsPage() {
+    const searchParams = useSearchParams();
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [loading, setLoading] = useState(true);
@@ -44,16 +54,25 @@ export default function IncidentsPage() {
 
     const [newIncident, setNewIncident] = useState({
         groupId: '',
-        youthId: '', // Optional, maybe text for now if we don't have youth list handy
+        youthId: '',
         description: '',
         alarmPressed: false,
         afterCare: '',
+        staffShare: '',
+        deescalation: '',
+        returnProcess: '',
+        debriefing: '',
+        restorativeAction: '',
+        teamLeaderContact: '',
         date: new Date().toISOString().split('T')[0]
     });
 
     useEffect(() => {
         fetchData();
-    }, []);
+        if (searchParams.get('new') === 'true') {
+            setIsModalOpen(true);
+        }
+    }, [searchParams]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -102,6 +121,12 @@ export default function IncidentsPage() {
                     description: '',
                     alarmPressed: false,
                     afterCare: '',
+                    staffShare: '',
+                    deescalation: '',
+                    returnProcess: '',
+                    debriefing: '',
+                    restorativeAction: '',
+                    teamLeaderContact: '',
                     date: new Date().toISOString().split('T')[0]
                 });
                 fetchData();
@@ -204,7 +229,13 @@ export default function IncidentsPage() {
                                             <p className="font-bold text-gray-900 text-lg">{incident.group?.name || 'Onbekend'}</p>
                                             <p className="text-sm text-gray-500 flex items-center gap-1.5">
                                                 <Calendar size={14} />
-                                                {new Date(incident.date).toLocaleDateString('nl-NL')}
+                                                {(() => {
+                                                    try {
+                                                        return new Date(incident.date).toLocaleDateString('nl-NL');
+                                                    } catch (e) {
+                                                        return 'Datum onbekend';
+                                                    }
+                                                })()}
                                             </p>
                                         </div>
                                     </div>
@@ -226,6 +257,45 @@ export default function IncidentsPage() {
                                         </p>
                                     </div>
 
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                        {incident.staffShare && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">Aandeel GL:</span>
+                                                {incident.staffShare}
+                                            </div>
+                                        )}
+                                        {incident.deescalation && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">De-escalatie:</span>
+                                                {incident.deescalation}
+                                            </div>
+                                        )}
+                                        {incident.returnProcess && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">Terugverplaatsing:</span>
+                                                {incident.returnProcess}
+                                            </div>
+                                        )}
+                                        {incident.debriefing && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">Nabespreking GL:</span>
+                                                {incident.debriefing}
+                                            </div>
+                                        )}
+                                        {incident.restorativeAction && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">Herstelactie:</span>
+                                                {incident.restorativeAction}
+                                            </div>
+                                        )}
+                                        {incident.teamLeaderContact && (
+                                            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                                                <span className="font-bold text-gray-700 block mb-1">Contact Teamleider:</span>
+                                                {incident.teamLeaderContact}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     {incident.afterCare && (
                                         <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                                             <h4 className="text-sm font-bold text-blue-900 mb-1 flex items-center gap-2">
@@ -237,6 +307,16 @@ export default function IncidentsPage() {
                                             </p>
                                         </div>
                                     )}
+
+                                    <div className="mt-4 flex justify-end">
+                                        <a
+                                            href={`mailto:?subject=Incidentmelding: ${incident.group?.name} - ${(() => { try { return new Date(incident.date).toLocaleDateString('nl-NL'); } catch { return 'Datum onbekend'; } })()}&body=Beste Teamleider,%0D%0A%0D%0AHierbij een melding van een incident:%0D%0A%0D%0ADatum: ${(() => { try { return new Date(incident.date).toLocaleDateString('nl-NL'); } catch { return 'Datum onbekend'; } })()}%0D%0AGroep: ${incident.group?.name}%0D%0A%0D%0ABeschrijving:%0D%0A${incident.description}%0D%0A%0D%0AAandeel GL: ${incident.staffShare || '-'}%0D%0ADe-escalatie: ${incident.deescalation || '-'}%0D%0ATerugverplaatsing: ${incident.returnProcess || '-'}%0D%0ANabespreking GL: ${incident.debriefing || '-'}%0D%0AHerstelactie: ${incident.restorativeAction || '-'}%0D%0AContact Teamleider: ${incident.teamLeaderContact || '-'}%0D%0A%0D%0ANazorg: ${incident.afterCare || '-'}`}
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                                        >
+                                            <Mail size={16} />
+                                            Mail Teamleider
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -252,7 +332,7 @@ export default function IncidentsPage() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto"
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto"
                         >
                             <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
                                 <AlertTriangle className="text-orange-500" />
@@ -292,9 +372,72 @@ export default function IncidentsPage() {
                                         required
                                         value={newIncident.description}
                                         onChange={e => setNewIncident({ ...newIncident, description: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 h-32 resize-none transition-all"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 h-24 resize-none transition-all"
                                         placeholder="Wat is er gebeurd?"
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Aandeel GL</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.staffShare}
+                                            onChange={e => setNewIncident({ ...newIncident, staffShare: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Wat was het aandeel van de GL?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">De-escalatie</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.deescalation}
+                                            onChange={e => setNewIncident({ ...newIncident, deescalation: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Hoe is er gedeëscaleerd?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Terugverplaatsing</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.returnProcess}
+                                            onChange={e => setNewIncident({ ...newIncident, returnProcess: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Hoe verliep dit?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Nabespreking GL</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.debriefing}
+                                            onChange={e => setNewIncident({ ...newIncident, debriefing: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Is de situatie nabesproken?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Herstelactie</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.restorativeAction}
+                                            onChange={e => setNewIncident({ ...newIncident, restorativeAction: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Is herstel wenselijk/gestart?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Contact Teamleider</label>
+                                        <input
+                                            type="text"
+                                            value={newIncident.teamLeaderContact}
+                                            onChange={e => setNewIncident({ ...newIncident, teamLeaderContact: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-gray-900 transition-all"
+                                            placeholder="Contact geweest?"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-100 cursor-pointer" onClick={() => setNewIncident({ ...newIncident, alarmPressed: !newIncident.alarmPressed })}>

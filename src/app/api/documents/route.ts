@@ -1,44 +1,70 @@
 import { NextResponse } from "next/server";
-import { getDocuments, createDocument, deleteDocument } from "@/services/documentService";
-import { z } from "zod";
+import fs from "fs";
+import path from "path";
+import { writeFile } from "fs/promises";
 
-const createDocumentSchema = z.object({
-    title: z.string().min(3),
-    category: z.string().optional(),
-    url: z.string().url(),
-});
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 export async function GET() {
     try {
-        const documents = await getDocuments();
-        return NextResponse.json(documents);
+        const files = fs.readdirSync(UPLOAD_DIR).map(file => {
+            const stats = fs.statSync(path.join(UPLOAD_DIR, file));
+            return {
+                name: file,
+                size: stats.size,
+                createdAt: stats.birthtime,
+                url: `/uploads/${file}`
+            };
+        });
+        return NextResponse.json(files);
     } catch (error) {
-        return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to list files" }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
-        const validatedData = createDocumentSchema.parse(body);
+        const formData = await request.formData();
+        const file = formData.get("file") as File;
 
-        const document = await createDocument(validatedData);
-        return NextResponse.json(document, { status: 201 });
+        if (!file) {
+            return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+        }
+
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        // Sanitize filename
+        const filename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filePath = path.join(UPLOAD_DIR, filename);
+
+        await writeFile(filePath, buffer);
+
+        return NextResponse.json({ success: true, filename });
     } catch (error) {
-        return NextResponse.json({ error: "Failed to create document" }, { status: 500 });
+        console.error("Upload error:", error);
+        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
 }
 
 export async function DELETE(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const filename = searchParams.get("filename");
+
+    if (!filename) return NextResponse.json({ error: "Filename required" }, { status: 400 });
+
     try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get("id");
-
-        if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-
-        await deleteDocument(id);
+        const filePath = path.join(UPLOAD_DIR, filename);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
-        return NextResponse.json({ error: "Failed to delete document" }, { status: 500 });
+        return NextResponse.json({ error: "Delete failed" }, { status: 500 });
     }
 }

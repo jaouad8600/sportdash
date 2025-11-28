@@ -155,9 +155,8 @@ export default function DailyReportPage() {
                                     </span>
                                 </div>
                                 <p className="text-gray-700 mb-2">{anonymizeText(inc.description)}</p>
-                                <div className="text-sm text-gray-500 flex gap-4">
-                                    <span>Maatregel: {anonymizeText(inc.measure)}</span>
-                                    <span>Gehoord: {inc.youthHeard ? "Ja" : "Nee"}</span>
+                                <div className="text-sm text-gray-500">
+                                    <span>Maatregel: {anonymizeText(inc.actionTaken)}</span>
                                 </div>
                             </div>
                         ))}
@@ -257,13 +256,13 @@ export default function DailyReportPage() {
                                                     {parsed?.presentYouth || "-"}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${parsed?.mood.toLowerCase().includes("goed") || parsed?.mood.toLowerCase().includes("positief")
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${parsed?.atmosphere.toLowerCase().includes("goed") || parsed?.atmosphere.toLowerCase().includes("positief")
                                                         ? "bg-green-100 text-green-800"
-                                                        : parsed?.mood.toLowerCase().includes("onrust")
+                                                        : parsed?.atmosphere.toLowerCase().includes("onrust")
                                                             ? "bg-orange-100 text-orange-800"
                                                             : "bg-gray-100 text-gray-800"
                                                         }`}>
-                                                        {parsed?.mood || "Onbekend"}
+                                                        {parsed?.atmosphere || "Onbekend"}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-500 text-sm max-w-xs truncate">

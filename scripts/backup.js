@@ -1,9 +1,20 @@
 #!/usr/bin/env node
 
 /**
- * Database Backup Utility for SportDash
+ * Full Project Backup Utility for SportDash
  * 
- * Creates timestamped backups of the SQLite database
+ * Creates timestamped .tgz archives of the entire project including:
+ * - Source code (src/, app/, components/)
+ * - Configuration files
+ * - Prisma schema and migrations
+ * - SQLite database
+ * 
+ * Excludes:
+ * - node_modules
+ * - .next
+ * - .git
+ * - backups directory itself
+ * 
  * Usage: node scripts/backup.js
  */
 
@@ -11,8 +22,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const DB_PATH = path.join(__dirname, '../prisma/dev.db');
-const BACKUP_DIR = path.join(__dirname, '../backups');
+const PROJECT_ROOT = path.join(__dirname, '..');
+const BACKUP_DIR = path.join(PROJECT_ROOT, 'backups');
 const RETENTION = {
     daily: 7,    // Keep last 7 days
     weekly: 4,   // Keep last 4 weeks
@@ -26,21 +37,39 @@ if (!fs.existsSync(BACKUP_DIR)) {
 }
 
 // Generate timestamp
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '-' +
-    new Date().toTimeString().split(' ')[0].replace(/:/g, '');
-const backupName = `sportdash-${timestamp}.db`;
+const now = new Date();
+const dateStr = now.toISOString().split('T')[0];
+const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+const timestamp = `${dateStr}_${timeStr}`;
+const backupName = `sportdash-FULL-backup-${timestamp}.tgz`;
 const backupPath = path.join(BACKUP_DIR, backupName);
 
 try {
-    // Check if database exists
-    if (!fs.existsSync(DB_PATH)) {
-        console.error('❌ Database file not found:', DB_PATH);
-        process.exit(1);
-    }
+    console.log('🔄 Starting full project backup...');
+    console.log(`   Target: ${backupPath}`);
 
-    // Create backup
-    console.log('🔄 Creating backup...');
-    fs.copyFileSync(DB_PATH, backupPath);
+    // Create tar archive excluding heavy/unnecessary folders
+    // Using --exclude for standard tar. Note: syntax might vary slightly by OS, 
+    // but standard tar usually supports --exclude.
+    // We run tar from the parent directory of the project root to capture the folder properly, 
+    // OR run from project root and archive '.' excluding items.
+    // Let's run from PROJECT_ROOT and archive '.'
+
+    const excludes = [
+        '--exclude="node_modules"',
+        '--exclude=".next"',
+        '--exclude=".git"',
+        '--exclude="backups"',
+        '--exclude=".DS_Store"',
+        '--exclude="*.log"',
+        '--exclude="tmp"'
+    ].join(' ');
+
+    // Command: tar -czf [dest] [excludes] .
+    const command = `tar ${excludes} -czf "${backupPath}" .`;
+
+    console.log('📦 Archiving files...');
+    execSync(command, { cwd: PROJECT_ROOT, stdio: 'inherit' });
 
     const stats = fs.statSync(backupPath);
     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
@@ -62,7 +91,7 @@ function cleanupOldBackups() {
     console.log('\n🧹 Cleaning up old backups...');
 
     const files = fs.readdirSync(BACKUP_DIR)
-        .filter(f => f.startsWith('sportdash-') && f.endsWith('.db'))
+        .filter(f => f.startsWith('sportdash-FULL-backup-') && f.endsWith('.tgz'))
         .map(f => ({
             name: f,
             path: path.join(BACKUP_DIR, f),

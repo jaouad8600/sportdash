@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
 export async function POST() {
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(process.env.AUTH_COOKIE_NAME ?? "sd_auth", "", {
-    path: "/",
-    maxAge: 0,
-  });
-  return res;
+  const cookieStore = await cookies();
+  cookieStore.delete('session');
+  return NextResponse.json({ success: true });
 }

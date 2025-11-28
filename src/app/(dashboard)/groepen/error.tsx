@@ -15,9 +15,8 @@ export default function Error({
           {error.message || "Onbekende fout"}
         </p>
         <button
-          className="btn btn-primary btn"
+          className="btn btn-primary mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
           onClick={() => reset()}
-          className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
         >
           Opnieuw proberen
         </button>

@@ -7,7 +7,7 @@ node_modules
 
 # backups en archieven niet in git
 __bak/
-backups/
+/backups/
 *.zip
 *.bundle
 *.7z

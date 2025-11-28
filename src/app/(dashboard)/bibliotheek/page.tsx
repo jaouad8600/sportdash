@@ -1,108 +1,142 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Book as BookIcon, Calendar, User, Plus, Search, ArrowRight, CheckCircle, Clock } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { anonymizeName } from "@/lib/privacy";
+import { Book, Plus, Search, User, Calendar, CheckCircle, AlertCircle, BookOpen } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthContext";
+import { format } from "date-fns";
+import LibraryRoster from "@/components/library/LibraryRoster";
 
-interface Book {
+interface BookType {
     id: string;
     title: string;
     author: string;
+    isbn?: string;
+    coverUrl?: string;
     totalCopies: number;
     available: number;
-    location: string;
+    location?: string;
 }
 
-interface Loan {
+interface LoanType {
     id: string;
-    book: Book;
+    book: BookType;
     youthName: string;
+    loanedBy: string;
     loanDate: string;
-    dueDate: string;
-    returnDate?: string;
     status: "ACTIVE" | "RETURNED" | "OVERDUE" | "LOST";
+    startTime?: string;
+    endTime?: string;
+    group?: { name: string };
 }
 
 export default function LibraryPage() {
-    const [activeTab, setActiveTab] = useState<"BOOKS" | "LOANS">("BOOKS");
-    const [books, setBooks] = useState<Book[]>([]);
-    const [loans, setLoans] = useState<Loan[]>([]);
+    const { user } = useAuth();
+    const [activeTab, setActiveTab] = useState<"books" | "loans" | "planning">("planning");
+    const [books, setBooks] = useState<BookType[]>([]);
+    const [loans, setLoans] = useState<LoanType[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Modal States
-    const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-    const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
-    const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    // Modals
+    const [showAddBook, setShowAddBook] = useState(false);
+    const [showLoanModal, setShowLoanModal] = useState<BookType | null>(null);
 
     // Forms
-    const [newBook, setNewBook] = useState({ title: "", author: "", totalCopies: 1, location: "" });
-    const [newLoan, setNewLoan] = useState({ youthName: "" });
+    const [bookForm, setBookForm] = useState({ title: "", author: "", isbn: "", totalCopies: 1, location: "" });
+    const [loanForm, setLoanForm] = useState({ youthName: "", notes: "" });
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [activeTab]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [booksRes, loansRes] = await Promise.all([
-                fetch("/api/library/books"),
-                fetch("/api/library/loans")
-            ]);
-            setBooks(await booksRes.json());
-            setLoans(await loansRes.json());
+            if (activeTab === "books") {
+                const res = await fetch("/api/library/books");
+                const data = await res.json();
+                setBooks(data);
+            } else {
+                const res = await fetch("/api/library/loans");
+                const data = await res.json();
+                setLoans(data);
+                // Also fetch books if in planning mode to populate dropdown
+                if (activeTab === "planning") {
+                    const booksRes = await fetch("/api/library/books");
+                    const booksData = await booksRes.json();
+                    setBooks(booksData);
+                }
+            }
         } catch (error) {
-            console.error("Error fetching library data", error);
+            console.error("Error fetching data", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCreateBook = async () => {
+    const handleAddBook = async () => {
         try {
             await fetch("/api/library/books", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newBook),
+                body: JSON.stringify(bookForm),
             });
-            setIsBookModalOpen(false);
+            setShowAddBook(false);
+            setBookForm({ title: "", author: "", isbn: "", totalCopies: 1, location: "" });
             fetchData();
         } catch (error) {
-            console.error("Error creating book", error);
+            console.error("Error adding book", error);
         }
     };
 
-    const handleCreateLoan = async () => {
-        if (!selectedBook) return;
+    const handleLoanBook = async () => {
+        if (!showLoanModal) return;
         try {
             await fetch("/api/library/loans", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    bookId: selectedBook.id,
-                    youthName: newLoan.youthName,
-                    loanedBy: "System" // Replace with actual user
+                    bookId: showLoanModal.id,
+                    youthName: loanForm.youthName,
+                    loanedBy: user?.id || "unknown",
+                    notes: loanForm.notes
                 }),
             });
-            setIsLoanModalOpen(false);
-            fetchData();
+            setShowLoanModal(null);
+            setLoanForm({ youthName: "", notes: "" });
+            fetchData(); // Refresh books to update availability
         } catch (error) {
-            console.error("Error creating loan", error);
+            console.error("Error loaning book", error);
         }
     };
 
-    const handleReturnLoan = async (id: string) => {
+    const handleAddPlanningLoan = async (loanData: any) => {
         try {
             await fetch("/api/library/loans", {
-                method: "PUT",
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, status: "RETURNED" }),
+                body: JSON.stringify({
+                    ...loanData,
+                    loanedBy: user?.id || "unknown",
+                }),
             });
             fetchData();
         } catch (error) {
-            console.error("Error returning loan", error);
+            console.error("Error creating planning loan", error);
+        }
+    };
+
+    const handleReturnBook = async (loanId: string) => {
+        if (!confirm("Bevestig inname van dit boek?")) return;
+        try {
+            await fetch(`/api/library/loans?id=${loanId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "RETURNED" }),
+            });
+            fetchData();
+        } catch (error) {
+            console.error("Error returning book", error);
         }
     };
 
@@ -112,222 +146,220 @@ export default function LibraryPage() {
     );
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="max-w-7xl mx-auto p-6">
+            <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900 font-serif">Bibliotheek</h1>
-                    <p className="text-gray-500 mt-2">Beheer boeken en uitleningen</p>
+                    <h1 className="text-3xl font-bold text-gray-900 font-serif">Bibliotheek</h1>
+                    <p className="text-gray-500 mt-1">Beheer boeken en uitleningen</p>
                 </div>
                 <div className="flex gap-3">
-                    <div className="bg-gray-100 p-1 rounded-lg flex">
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button
-                            onClick={() => setActiveTab("BOOKS")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "BOOKS" ? "bg-white text-teylingereind-royal shadow-sm" : "text-gray-500 hover:text-gray-700"
-                                }`}
+                            onClick={() => setActiveTab("books")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "books" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
                         >
                             Boeken
                         </button>
                         <button
-                            onClick={() => setActiveTab("LOANS")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "LOANS" ? "bg-white text-teylingereind-royal shadow-sm" : "text-gray-500 hover:text-gray-700"
-                                }`}
+                            onClick={() => setActiveTab("loans")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "loans" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
                         >
                             Uitleningen
                         </button>
+                        <button
+                            onClick={() => setActiveTab("planning")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "planning" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                        >
+                            Planning
+                        </button>
                     </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                    {activeTab === "BOOKS" ? (
-                        <>
-                            <div className="flex gap-4">
-                                <div className="flex-1 flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200">
-                                    <Search className="text-gray-400" size={20} />
-                                    <input
-                                        type="text"
-                                        placeholder="Zoek op titel of auteur..."
-                                        className="flex-1 outline-none"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => setIsBookModalOpen(true)}
-                                    className="px-4 py-2 bg-teylingereind-royal text-white rounded-xl hover:bg-blue-700 flex items-center gap-2"
-                                >
-                                    <Plus size={20} />
-                                    Nieuw Boek
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-4">
-                                {filteredBooks.map(book => (
-                                    <div key={book.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                                <BookIcon size={24} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-gray-900">{book.title}</h3>
-                                                <p className="text-sm text-gray-500">{book.author}</p>
-                                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded">Locatie: {book.location || "-"}</span>
-                                                    <span className={book.available > 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                                                        {book.available} / {book.totalCopies} beschikbaar
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedBook(book);
-                                                setIsLoanModalOpen(true);
-                                            }}
-                                            disabled={book.available === 0}
-                                            className="px-3 py-1.5 bg-teylingereind-royal/10 text-teylingereind-royal rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Uitlenen
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="space-y-4">
-                            {loans.map(loan => (
-                                <div key={loan.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">{loan.book.title}</h3>
-                                            <p className="text-sm text-gray-500">Geleend door: <span className="font-medium text-gray-900">{anonymizeName(loan.youthName)}</span></p>
-                                            <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                                <span className="flex items-center gap-1"><Calendar size={12} /> Geleend: {new Date(loan.loanDate).toLocaleDateString()}</span>
-                                                <span className="flex items-center gap-1"><Clock size={12} /> Retour: {loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : "-"}</span>
-                                            </div>
-                                        </div>
-                                        {loan.status === "ACTIVE" ? (
-                                            <button
-                                                onClick={() => handleReturnLoan(loan.id)}
-                                                className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100"
-                                            >
-                                                Retourneren
-                                            </button>
-                                        ) : (
-                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
-                                                Geretourneerd
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    {activeTab === "books" && (
+                        <button
+                            onClick={() => setShowAddBook(true)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-md"
+                        >
+                            <Plus size={20} />
+                            Nieuw Boek
+                        </button>
                     )}
                 </div>
-
-                {/* Sidebar: Schedule */}
-                <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-teylingereind-blue to-teylingereind-royal text-white p-6 rounded-2xl shadow-lg">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Clock size={20} />
-                            Uitleentijden
-                        </h3>
-                        <div className="space-y-3 text-sm opacity-90">
-                            <div className="flex justify-between border-b border-white/20 pb-2">
-                                <span>Maandag</span>
-                                <span className="font-mono">16:00 - 17:00</span>
-                            </div>
-                            <div className="flex justify-between border-b border-white/20 pb-2">
-                                <span>Woensdag</span>
-                                <span className="font-mono">14:00 - 15:00</span>
-                            </div>
-                            <div className="flex justify-between border-b border-white/20 pb-2">
-                                <span>Vrijdag</span>
-                                <span className="font-mono">16:00 - 17:00</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Zaterdag</span>
-                                <span className="font-mono">10:00 - 11:00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                        <h3 className="font-bold text-gray-900 mb-2">Regels</h3>
-                        <ul className="text-sm text-gray-600 space-y-2 list-disc pl-4">
-                            <li>Max. 1 boek per jongere</li>
-                            <li>Uitleentermijn is 2 weken</li>
-                            <li>Verlengen kan 1 keer</li>
-                            <li>Boete bij beschadiging</li>
-                        </ul>
-                    </div>
-                </div>
             </div>
 
-            {/* Modals */}
-            <AnimatePresence>
-                {isBookModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                            <h2 className="text-xl font-bold mb-4">Nieuw Boek</h2>
-                            <div className="space-y-4">
-                                <input
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder="Titel"
-                                    value={newBook.title}
-                                    onChange={e => setNewBook({ ...newBook, title: e.target.value })}
-                                />
-                                <input
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder="Auteur"
-                                    value={newBook.author}
-                                    onChange={e => setNewBook({ ...newBook, author: e.target.value })}
-                                />
-                                <input
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder="Locatie"
-                                    value={newBook.location}
-                                    onChange={e => setNewBook({ ...newBook, location: e.target.value })}
-                                />
-                                <input
-                                    type="number"
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder="Aantal exemplaren"
-                                    value={newBook.totalCopies}
-                                    onChange={e => setNewBook({ ...newBook, totalCopies: parseInt(e.target.value) })}
-                                />
-                                <div className="flex justify-end gap-2 mt-4">
-                                    <button onClick={() => setIsBookModalOpen(false)} className="px-4 py-2 text-gray-600">Annuleren</button>
-                                    <button onClick={handleCreateBook} className="px-4 py-2 bg-teylingereind-royal text-white rounded-lg">Opslaan</button>
+            {activeTab === "books" && (
+                <>
+                    <div className="mb-6 relative max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Zoek op titel of auteur..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredBooks.map(book => (
+                            <div key={book.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                                <div className="h-32 bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+                                    <BookOpen size={48} className="text-blue-200" />
                                 </div>
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <h3 className="font-bold text-gray-900 text-lg mb-1 line-clamp-1">{book.title}</h3>
+                                    <p className="text-gray-500 text-sm mb-4">{book.author}</p>
+
+                                    <div className="mt-auto flex items-center justify-between">
+                                        <div className="text-sm">
+                                            <span className={`font-bold ${book.available > 0 ? "text-green-600" : "text-red-600"}`}>
+                                                {book.available}
+                                            </span>
+                                            <span className="text-gray-400"> / {book.totalCopies} beschikbaar</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowLoanModal(book)}
+                                            disabled={book.available === 0}
+                                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Lenen
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {activeTab === "loans" && (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Boek</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Geleend door</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Datum</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actie</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {loans.map(loan => (
+                                <tr key={loan.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium text-gray-900">{loan.book.title}</td>
+                                    <td className="px-6 py-4 text-gray-600">
+                                        {loan.group ? loan.group.name : loan.youthName}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500 text-sm">
+                                        {format(new Date(loan.loanDate), "d MMM yyyy")}
+                                        {loan.startTime && (
+                                            <span className="block text-xs text-gray-400">
+                                                {format(new Date(loan.startTime), "HH:mm")} - {loan.endTime ? format(new Date(loan.endTime), "HH:mm") : ""}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${loan.status === "ACTIVE" ? "bg-blue-100 text-blue-700" :
+                                            loan.status === "RETURNED" ? "bg-green-100 text-green-700" :
+                                                "bg-red-100 text-red-700"
+                                            }`}>
+                                            {loan.status === "ACTIVE" ? "Uitgeleend" :
+                                                loan.status === "RETURNED" ? "Ingeleverd" : loan.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        {loan.status === "ACTIVE" && (
+                                            <button
+                                                onClick={() => handleReturnBook(loan.id)}
+                                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                            >
+                                                Innemen
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+
+
+            {activeTab === "planning" && (
+                <LibraryRoster
+                    loans={loans}
+                    books={books}
+                    onAddLoan={handleAddPlanningLoan}
+                />
+            )}
+
+            {/* Add Book Modal */}
+            {showAddBook && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-bold mb-6">Nieuw Boek Toevoegen</h2>
+                        <div className="space-y-4">
+                            <input
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="Titel"
+                                value={bookForm.title}
+                                onChange={e => setBookForm({ ...bookForm, title: e.target.value })}
+                            />
+                            <input
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="Auteur"
+                                value={bookForm.author}
+                                onChange={e => setBookForm({ ...bookForm, author: e.target.value })}
+                            />
+                            <input
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="ISBN (optioneel)"
+                                value={bookForm.isbn}
+                                onChange={e => setBookForm({ ...bookForm, isbn: e.target.value })}
+                            />
+                            <input
+                                type="number"
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="Aantal exemplaren"
+                                value={bookForm.totalCopies}
+                                onChange={e => setBookForm({ ...bookForm, totalCopies: parseInt(e.target.value) })}
+                            />
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button onClick={() => setShowAddBook(false)} className="px-4 py-2 text-gray-600">Annuleren</button>
+                                <button onClick={handleAddBook} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Toevoegen</button>
                             </div>
                         </div>
                     </div>
-                )}
-                {isLoanModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                            <h2 className="text-xl font-bold mb-4">Boek Uitlenen</h2>
-                            <p className="text-sm text-gray-500 mb-4">Boek: {selectedBook?.title}</p>
-                            <div className="space-y-4">
-                                <input
-                                    className="w-full p-2 border rounded-lg"
-                                    placeholder="Naam Jongere"
-                                    value={newLoan.youthName}
-                                    onChange={e => setNewLoan({ ...newLoan, youthName: e.target.value })}
-                                />
-                                <div className="flex justify-end gap-2 mt-4">
-                                    <button onClick={() => setIsLoanModalOpen(false)} className="px-4 py-2 text-gray-600">Annuleren</button>
-                                    <button onClick={handleCreateLoan} className="px-4 py-2 bg-teylingereind-royal text-white rounded-lg">Bevestigen</button>
-                                </div>
+                </div>
+            )}
+
+            {/* Loan Modal */}
+            {showLoanModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h2 className="text-xl font-bold mb-2">Boek Uitlenen</h2>
+                        <p className="text-gray-500 mb-6">"{showLoanModal.title}" uitlenen aan:</p>
+                        <div className="space-y-4">
+                            <input
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="Naam Jongere / Groep"
+                                value={loanForm.youthName}
+                                onChange={e => setLoanForm({ ...loanForm, youthName: e.target.value })}
+                            />
+                            <textarea
+                                className="w-full p-2.5 border border-gray-200 rounded-xl"
+                                placeholder="Opmerkingen (optioneel)"
+                                value={loanForm.notes}
+                                onChange={e => setLoanForm({ ...loanForm, notes: e.target.value })}
+                            />
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button onClick={() => setShowLoanModal(null)} className="px-4 py-2 text-gray-600">Annuleren</button>
+                                <button onClick={handleLoanBook} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Uitlenen</button>
                             </div>
                         </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
         </div>
     );
 }

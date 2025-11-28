@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { RefreshCw, Calendar } from "lucide-react";
+import { RefreshCw, Calendar, Mail } from "lucide-react";
 
 export default function ReportControls() {
     const router = useRouter();
@@ -67,10 +67,48 @@ export default function ReportControls() {
             <button
                 onClick={handleGenerate}
                 disabled={loading}
-                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
                 <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
                 <span>{loading ? "Genereren..." : "Handmatig Genereren"}</span>
+            </button>
+
+            <button
+                onClick={async () => {
+                    setLoading(true);
+                    try {
+                        // Fetch the summary text from the API (we can reuse the generation logic or just fetch reports)
+                        // Ideally we should have an endpoint that returns the text.
+                        // For now, let's fetch the reports for the date and construct the text client-side or use a new endpoint.
+                        // Let's use a new endpoint that returns the formatted text string.
+
+                        const res = await fetch('/api/reports/summary-text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ date })
+                        });
+
+                        if (!res.ok) throw new Error("Failed to fetch summary");
+
+                        const { text } = await res.json();
+
+                        const subject = encodeURIComponent(`Sportrapportage ${new Date(date).toLocaleDateString('nl-NL')}`);
+                        const body = encodeURIComponent(text);
+
+                        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+
+                    } catch (e) {
+                        console.error(e);
+                        alert("Er is een fout opgetreden bij het openen van de mail.");
+                    } finally {
+                        setLoading(false);
+                    }
+                }}
+                disabled={loading}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+                <Mail size={18} />
+                <span>Mail Dagrapportage</span>
             </button>
         </div>
     );
