@@ -1,6 +1,5 @@
 "use client";
 
-import RoleSwitcher from "@/components/ui/RoleSwitcher";
 import Sidebar from "@/components/Sidebar";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { motion } from "framer-motion";
@@ -11,11 +10,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-teylingereind-gray via-blue-50/30 to-teylingereind-gray relative overflow-hidden">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-black dark:via-gray-950 dark:to-black relative overflow-hidden">
       {/* Decorative Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-teylingereind-royal/5 to-transparent rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-teylingereind-orange/5 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-blue-500/5 dark:from-blue-500/10 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-orange-500/5 dark:from-purple-500/10 to-transparent rounded-full blur-3xl"></div>
       </div>
 
       <motion.div
@@ -39,8 +38,6 @@ export default function DashboardLayout({
           {children}
         </div>
       </motion.main>
-
-      <RoleSwitcher />
     </div>
   );
 }

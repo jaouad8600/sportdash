@@ -16,26 +16,26 @@ const MOCK_SCHEDULE = [
 
 export default function TodaySchedule() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden mb-8">
+            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
                 <div className="flex items-center gap-2">
-                    <Calendar className="text-blue-600" size={20} />
-                    <h2 className="font-bold text-gray-800">Sportmomenten Vandaag</h2>
+                    <Calendar className="text-blue-600 dark:text-blue-400" size={20} />
+                    <h2 className="font-bold text-gray-800 dark:text-gray-200">Sportmomenten Vandaag</h2>
                 </div>
             </div>
 
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {MOCK_SCHEDULE.map((item) => (
-                    <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group">
+                    <div key={item.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex items-center justify-between group">
                         <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2 text-gray-900 font-mono font-medium w-16">
+                            <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100 font-mono font-medium w-16">
                                 <Clock size={16} className="text-gray-400" />
                                 {item.time}
                             </div>
 
                             <div>
-                                <div className="font-semibold text-gray-900">{item.group}</div>
-                                <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                <div className="font-semibold text-gray-900 dark:text-gray-100">{item.group}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${getTypeColor(item.type)}`}>
                                         {item.type}
                                     </span>
@@ -48,7 +48,7 @@ export default function TodaySchedule() {
                         </div>
 
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-2 hover:bg-gray-200 rounded-full text-gray-400 hover:text-gray-600">
+                            <button className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                                 <ArrowRight size={16} />
                             </button>
                         </div>
@@ -56,8 +56,8 @@ export default function TodaySchedule() {
                 ))}
             </div>
 
-            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-                <Link href="/kalender" className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800 text-center">
+                <Link href="/kalender" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline">
                     Bekijk volledige kalender
                 </Link>
             </div>

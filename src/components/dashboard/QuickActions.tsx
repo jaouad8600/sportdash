@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Activity, CalendarDays, ClipboardList, Stethoscope, AlertTriangle } from 'lucide-react';
+import { Activity, CalendarDays, ClipboardList, Stethoscope, AlertTriangle, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function QuickActions() {
@@ -17,6 +17,12 @@ export default function QuickActions() {
             href: '/sportindicaties?new=true',
             icon: Stethoscope,
             color: 'bg-blue-500',
+        },
+        {
+            label: 'Herstelgesprek',
+            href: '/herstelgesprekken',
+            icon: MessageCircle,
+            color: 'bg-purple-600',
         },
         {
             label: 'Planning Bekijken',
@@ -39,7 +45,7 @@ export default function QuickActions() {
     ];
 
     return (
-        <div className="bg-[#1e293b] p-4 rounded-xl shadow-lg mb-6">
+        <div className="bg-gray-800 dark:bg-gray-900 p-4 rounded-xl shadow-lg mb-6 border border-gray-700 dark:border-gray-800">
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
                 <div className="flex flex-wrap gap-3 w-full md:w-auto">
                     {actions.map((action) => (

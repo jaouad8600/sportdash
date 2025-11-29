@@ -56,7 +56,7 @@ function StatCard({ title, count, label, icon: Icon, color, bgColor, borderColor
     return (
         <Link
             href={href}
-            className={`block rounded-xl border ${borderColor} bg-white p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}
+            className={`block rounded-xl border ${borderColor} dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}
         >
             <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
                 <Icon size={80} />
@@ -64,20 +64,20 @@ function StatCard({ title, count, label, icon: Icon, color, bgColor, borderColor
 
             <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-3">
-                    <div className={`p-2 rounded-lg ${bgColor} ${color}`}>
+                    <div className={`p-2 rounded-lg ${bgColor} dark:bg-opacity-20 ${color}`}>
                         <Icon size={20} />
                     </div>
-                    <h3 className="font-semibold text-gray-700">{title}</h3>
+                    <h3 className="font-semibold text-gray-700 dark:text-gray-300">{title}</h3>
                 </div>
 
                 <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-3xl font-bold text-gray-900">{count}</span>
-                    <span className="text-sm text-gray-500 font-medium">{label}</span>
+                    <span className="text-3xl font-bold text-gray-900 dark:text-white">{count}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{label}</span>
                 </div>
 
                 <div className="space-y-1">
                     {items.slice(0, 3).map((item: any) => (
-                        <div key={item.id} className="text-xs text-gray-500 flex items-center gap-2">
+                        <div key={item.id} className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                             <span className={`w-1.5 h-1.5 rounded-full ${color.replace('text-', 'bg-')}`} />
                             <span className="truncate font-medium">
                                 {item.youth ? (
@@ -90,18 +90,18 @@ function StatCard({ title, count, label, icon: Icon, color, bgColor, borderColor
                                 )}
                                 {/* Always show group if available */}
                                 {item.group?.name && (
-                                    <span className="text-[10px] text-gray-400">({item.group.name})</span>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">({item.group.name})</span>
                                 )}
                             </span>
                         </div>
                     ))}
                     {items.length > 3 && (
-                        <div className="text-xs text-gray-400 pl-3.5">
+                        <div className="text-xs text-gray-400 dark:text-gray-500 pl-3.5">
                             + {items.length - 3} meer...
                         </div>
                     )}
                     {items.length === 0 && (
-                        <div className="text-xs text-gray-400 italic pl-3.5">
+                        <div className="text-xs text-gray-400 dark:text-gray-500 italic pl-3.5">
                             Geen actieve items
                         </div>
                     )}
@@ -115,7 +115,7 @@ function StatsSkeleton() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {[1, 2, 3].map((i) => (
-                <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+                <div key={i} className="h-40 bg-gray-100 dark:bg-gray-900 rounded-xl animate-pulse" />
             ))}
         </div>
     );

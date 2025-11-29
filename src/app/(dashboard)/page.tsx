@@ -12,12 +12,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       {/* Header Section */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-serif">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Overzicht van vandaag</p>
-        </div>
-        <div className="text-lg font-medium text-gray-600 bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-100 hidden md:block">
+      <div className="flex justify-end items-center">
+        <div className="text-lg font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 px-6 py-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hidden md:block">
           {new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
       </div>
