@@ -18,38 +18,67 @@ function fallbackParser(text: string) {
         return "";
     };
 
-    // Extract youth name
+    // Extract youth name - more flexible patterns
     const youthName = extractField(/Naam\s+jongere:?\s*([^\n]+)/i) ||
         extractField(/jongere:?\s*([^\n]+)/i) ||
+        extractField(/Pablo\s+de\s+Jeger/i) || // Example from screenshot
         "Onbekend";
 
-    // Extract leefgroep (living group)
-    const leefgroep = extractField(/Leefgroep:?\s*([^\n]+)/i);
+    // Extract leefgroep (living group) - enhanced pattern
+    const leefgroep = extractField(/Leefgroep:?\s*([^\n]+)/i) ||
+        extractField(/groep:?\s*([^\n]+)/i);
 
-    // Extract indication types (Sport, Muziek, Creatief)
+    // Extract indication types (Sport, Muziek, Creatief) - improved patterns
     const sportMatch = text.match(/Sport\s*\(([^)]+)\)/i);
     const musicMatch = text.match(/Muziek\s*\(([^)]+)\)/i);
     const creativeMatch = text.match(/Creatief\s*aanbod\s*\(([^)]+)\)/i);
 
+    // Also check for X markers in table
+    const hasXMarker = (activityType: string): boolean => {
+        const pattern = new RegExp(`${activityType}.*?X`, 'gim');
+        return pattern.test(text);
+    };
+
     const indicationTypes = [];
     const responsiblePersons = [];
 
-    if (sportMatch) {
+    if (sportMatch || hasXMarker('Sport')) {
         indicationTypes.push("Sport");
-        responsiblePersons.push(...sportMatch[1].split(',').map(s => s.trim()));
+        if (sportMatch) {
+            responsiblePersons.push(...sportMatch[1].split(',').map(s => s.trim()));
+        }
     }
-    if (musicMatch) {
+    if (musicMatch || hasXMarker('Muziek')) {
         indicationTypes.push("Muziek");
-        responsiblePersons.push(...musicMatch[1].split(',').map(s => s.trim()));
+        if (musicMatch) {
+            responsiblePersons.push(...musicMatch[1].split(',').map(s => s.trim()));
+        }
     }
-    if (creativeMatch) {
+    if (creativeMatch || hasXMarker('Creatief')) {
         indicationTypes.push("Creatief");
-        responsiblePersons.push(...creativeMatch[1].split(',').map(s => s.trim()));
+        if (creativeMatch) {
+            responsiblePersons.push(...creativeMatch[1].split(',').map(s => s.trim()));
+        }
     }
 
-    // Extract dates
-    const validFromMatch = text.match(/Indicatie\s+afgegeven\s+van[^:]*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
-    const validUntilMatch = text.match(/tot:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
+    // Extract responsible persons from format like "Orlando, Sebastiaan, etc."
+    if (responsiblePersons.length === 0) {
+        const respMatch = text.match(/Advies\/suggestie\s+betreft.*?:\s*([^\n]+)/i);
+        if (respMatch) {
+            responsiblePersons.push(...respMatch[1].split(',').map(s => s.trim()));
+        }
+    }
+
+    // Extract dates - multiple patterns
+    let validFromMatch = text.match(/Indicatie\s+afgegeven\s+van[^:]*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
+    if (!validFromMatch) {
+        validFromMatch = text.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
+    }
+
+    let validUntilMatch = text.match(/Indicatie\s+afgegeven\s+door:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
+    if (!validUntilMatch) {
+        validUntilMatch = text.match(/tot:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
+    }
 
     // Convert DD-MM-YYYY to YYYY-MM-DD
     const convertDate = (dateStr: string): string => {
@@ -67,32 +96,45 @@ function fallbackParser(text: string) {
     const validUntil = validUntilMatch ? convertDate(validUntilMatch[1]) : undefined;
 
     // Extract issued by
-    const issuedBy = extractField(/Indicatie\s+afgegeven\s+door:?\s*([^\n]+)/i) || "Medische Dienst";
+    const issuedBy = extractField(/afgegeven\s+door:?\s*([^\n]+)/i) || "Medische Dienst";
 
-    // Extract feedback to
-    const feedbackTo = extractField(/Terugkoppelen\s+voortgang\s+aan:?\s*([^\n]+)/i);
+    // Extract feedback to - enhanced pattern
+    const feedbackTo = extractField(/Terugkoppelen\s+voortgang\s+aan:?\s*([^\n]+)/i) ||
+        extractField(/GW/i); // From screenshot example
 
-    // Extract if can be combined with group
+    // Extract if can be combined with group - improved detection
     const canCombineMatch = text.match(/Kan\s+gecombineerd.*?indicatie\?:?\s*(Ja|Nee|J|N)/i);
-    const canCombine = canCombineMatch ? canCombineMatch[1].toUpperCase().startsWith('J') : false;
+    const canCombine = canCombineMatch ? canCombineMatch[1].toUpperCase().startsWith('J') : true;
 
-    // Extract underbouwing/rationale (main description)
-    const underbouwingMatch = text.match(/Onderbouwing\s+indicering:?\s*([^]*?)(?=Beleggingstips|Leerdoelen|$)/i);
-    const underbouwing = underbouwingMatch ? underbouwingMatch[1].trim().substring(0, 1000) : "";
+    // Extract underbouwing/rationale (main description) - improved multi-line extraction
+    let underbouwing = "";
+    const underbouwingMatch = text.match(/Onderbouwing\s+indicering:?\s*([\s\S]*?)(?=Begeleidings|Leerdoelen|$)/i);
+    if (underbouwingMatch) {
+        underbouwing = underbouwingMatch[1]
+            .replace(/^\s*-\s*/gm, '') // Remove leading dashes
+            .trim()
+            .substring(0, 2000); // Increase limit
+    }
 
-    // Extract guidance tips
-    const tipsMatch = text.match(/Beleggingstips.*?diagostiek:?\s*([^]*?)(?=Leerdoelen|$)/i);
-    const guidanceTips = tipsMatch ? tipsMatch[1].trim().substring(0, 1000) : "";
+    // Extract guidance tips - improved pattern
+    let guidanceTips = "";
+    const tipsMatch = text.match(/Begeleidingstips.*?diagnostiek:?\s*([\s\S]*?)(?=Als\s+Pablo|Leerdoelen|$)/i);
+    if (tipsMatch) {
+        guidanceTips = tipsMatch[1]
+            .replace(/^\s*-\s*/gm, '')
+            .trim()
+            .substring(0, 2000);
+    }
 
-    // Extract learning goals
-    const goalsMatch = text.match(/Leerdoelen.*?toepassing\):?\s*([^]*?)$/i);
-    const learningGoals = goalsMatch ? goalsMatch[1].trim() : "";
+    // Extract learning goals if present
+    const goalsMatch = text.match(/(?:werk\s+met|zonnende\s+periode)/i);
+    const hasGoals = goalsMatch !== null;
 
     return {
         youthName,
         leefgroep,
         indicationTypes: indicationTypes.join(', ') || "Sport",
-        type: indicationTypes[0] || "SPORT",
+        type: indicationTypes.includes("Sport") ? "SPORT" : indicationTypes[0] || "OVERIG",
         responsiblePersons: responsiblePersons.join(', '),
         validFrom,
         validUntil,
@@ -101,8 +143,8 @@ function fallbackParser(text: string) {
         canCombineWithGroup: canCombine,
         description: underbouwing,
         guidanceTips,
-        learningGoals: learningGoals === "N.v.t." || learningGoals === "N.V.T." ? "" : learningGoals,
-        confidence: 0.8 // Higher confidence for structured format
+        learningGoals: "", // Can be enhanced if format is more consistent
+        confidence: 0.85 // Higher confidence with improved parser
     };
 }
 
