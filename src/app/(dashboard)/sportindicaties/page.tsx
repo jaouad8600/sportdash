@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIndications, useGroups } from "@/hooks/useSportData";
 import { useToast } from "@/hooks/useToast";
 import { SportIndication, Group, Youth } from "@prisma/client";
+import IndicationTextParser from "@/components/IndicationTextParser";
+import type { ParsedIndicatie } from "@/types/indication";
 
 // Define Evaluation locally if not exported or use any
 interface Evaluation {
@@ -17,7 +19,6 @@ interface Evaluation {
     date: Date;
     summary: string;
     author: string | null;
-    createdAt: Date;
     createdAt: Date;
     updatedAt: Date;
     emailedAt?: Date | null;
@@ -53,8 +54,6 @@ export default function SportIndicationsPage() {
 
     const [showModal, setShowModal] = useState(false);
     const [activeTab, setActiveTab] = useState<"manual" | "paste">("manual");
-    const [pasteText, setPasteText] = useState("");
-    const [isParsing, setIsParsing] = useState(false);
 
     // Edit/Action Modals
     const [editingIndication, setEditingIndication] = useState<IndicationWithRelations | null>(null);
@@ -255,64 +254,69 @@ export default function SportIndicationsPage() {
         setDescription("");
         setType(INDICATION_TYPES[0]);
         setValidUntil("");
-        setPasteText("");
         setActiveTab("manual");
     };
 
-    const handleParse = async () => {
-        if (!pasteText.trim()) {
-            alert("Plak eerst tekst in het veld");
-            return;
+    const handleParsedData = (parsed: ParsedIndicatie) => {
+        // Map parsed data to form fields
+
+        // 1. Find matching group based on leefgroep
+        if (parsed.leefgroep) {
+            const group = groups?.find(g =>
+                g.name.toLowerCase().includes(parsed.leefgroep.toLowerCase())
+            );
+            if (group) {
+                setSelectedGroup(group.id);
+            }
         }
 
-        setIsParsing(true);
-        try {
-            const res = await fetch("/api/indicaties/parse", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: pasteText }),
-            });
+        // 2. Set youth name
+        setYouthName(parsed.naamJongere || "");
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
-                throw new Error(errorData.details || errorData.error || "Parse failed");
+        // 3. Set description from onderbouwing
+        setDescription(parsed.onderbouwingIndicering || "");
+
+        // 4. Set type based on indicatie activiteit
+        if (parsed.indicatieActiviteit.length > 0) {
+            const firstActivity = parsed.indicatieActiviteit[0];
+            if (firstActivity.toLowerCase().includes("sport")) {
+                setType("CARDIO"); // or appropriate type
+            } else if (firstActivity.toLowerCase().includes("muziek")) {
+                setType("OVERIG");
+            } else {
+                setType("OVERIG");
             }
+        }
 
-            const parsed = await res.json();
-
-            if (parsed.warning) {
-                alert(`⚠️ ${parsed.warning}`);
-            }
-
-            if (parsed.groupName) {
-                const group = groups?.find(g => g.name.toLowerCase() === parsed.groupName.toLowerCase());
-                if (group) {
-                    setSelectedGroup(group.id);
+        // 5. Set dates if available (need to parse the "van - tot" field)
+        if (parsed.indicatieVanTot) {
+            // Try to extract dates from format like "14-11-2025"
+            const dateMatch = parsed.indicatieVanTot.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
+            if (dateMatch) {
+                // Convert DD-MM-YYYY to YYYY-MM-DD
+                const parts = dateMatch[1].split(/[-/]/);
+                if (parts.length === 3) {
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[2];
+                    setValidFrom(`${year}-${month}-${day}`);
                 }
             }
-
-            setYouthName(parsed.youthName || "");
-            setDescription(parsed.description || "");
-            setType(parsed.type || "OVERIG");
-            setValidFrom(parsed.validFrom || new Date().toISOString().split("T")[0]);
-            if (parsed.validUntil) {
-                setValidUntil(parsed.validUntil);
-            }
-
-            setActiveTab("manual");
-
-            const message = parsed.warning
-                ? "✅ Gegevens geanalyseerd met basis-parser.\n\n⚠️ Controleer alle velden zorgvuldig voordat je opslaat!"
-                : "✅ Gegevens succesvol geanalyseerd!\n\nControleer de velden en pas indien nodig aan.";
-
-            alert(message);
-        } catch (error) {
-            console.error("Parse error:", error);
-            const errorMessage = error instanceof Error ? error.message : "Onbekende fout";
-            alert(`❌ Fout bij analyseren van tekst:\n\n${errorMessage}\n\n💡 Tip: Gebruik het 'Handmatig' tabblad om de gegevens zelf in te vullen.`);
-        } finally {
-            setIsParsing(false);
         }
+
+        // 6. Set other fields
+        setLeefgroep(parsed.leefgroep || "");
+        setIssuedBy(parsed.indicatieAfgegevenDoor || "Medische Dienst");
+        setFeedbackTo(parsed.terugkoppelingAan || "");
+        setCanCombine(parsed.kanCombinerenMetGroepsgenoot ?? true);
+        setGuidanceTips(parsed.bejegeningstips || "");
+        setLearningGoals(parsed.leerdoelen || "");
+
+        // 7. Switch to manual tab to show filled form
+        setActiveTab("manual");
+
+        // 8. Show success message
+        toast.success("✅ Tekst geanalyseerd! Controleer de velden en pas aan indien nodig.");
     };
 
     if (loadingIndications || loadingGroups) return <div className="p-8">Laden...</div>;
@@ -503,43 +507,8 @@ export default function SportIndicationsPage() {
 
                         {/* Paste Tab Content */}
                         {activeTab === "paste" && (
-                            <div className="p-6 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Plak hier de volledige tekst van het indicatie document
-                                    </label>
-                                    <textarea
-                                        value={pasteText}
-                                        onChange={(e) => setPasteText(e.target.value)}
-                                        className="w-full p-4 border border-gray-200 rounded-lg h-64 focus:ring-2 focus:ring-purple-500 outline-none resize-none text-sm font-mono"
-                                        placeholder="Plak de tekst van het Word document hier..."
-                                    />
-                                </div>
-
-                                <div className="pt-4 flex justify-end space-x-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                                    >
-                                        Annuleren
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleParse}
-                                        disabled={isParsing || !pasteText.trim()}
-                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
-                                    >
-                                        {isParsing ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                                                Analyseren...
-                                            </>
-                                        ) : (
-                                            "Analyseer"
-                                        )}
-                                    </button>
-                                </div>
+                            <div className="p-6">
+                                <IndicationTextParser onParsed={handleParsedData} />
                             </div>
                         )}
 
