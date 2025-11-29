@@ -64,7 +64,6 @@ export default function WidgetDock({ onlyOn = "/admin" }: { onlyOn?: string }) {
             }}
           >
             <button
-              className="btn"
               onClick={() => setTab("overdracht")}
               className="wd-tab"
               style={tabStyle(tab === "overdracht")}
@@ -72,7 +71,6 @@ export default function WidgetDock({ onlyOn = "/admin" }: { onlyOn?: string }) {
               Overdracht
             </button>
             <button
-              className="btn"
               onClick={() => setTab("rapport")}
               className="wd-tab"
               style={tabStyle(tab === "rapport")}
@@ -84,11 +82,7 @@ export default function WidgetDock({ onlyOn = "/admin" }: { onlyOn?: string }) {
               href="/kalender"
               style={{ fontSize: 12, textDecoration: "none", color: "#2563eb" }}
             >
-              Indicaties", href:"/indicaties"},
-    { label:"Inventaris", href:"/inventaris"},
-    { label:"{ label:"Indicaties", href:"/indicaties"},
-    { label:"Inventaris", href:"/inventaris"},
-    Kalender" →
+              Kalender →
             </Link>
           </div>
 

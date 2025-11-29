@@ -40,7 +40,7 @@ export default function AuditPage() {
 
     if (loading) return <div className="p-8">Laden...</div>;
 
-    if (user.role !== "BEHEERDER" && user.role !== "AV_MT") {
+    if (!user || (user.role !== "BEHEERDER" && user.role !== "AV_MT")) {
         return (
             <div className="p-8 text-center">
                 <Shield className="mx-auto text-red-500 mb-4" size={48} />
