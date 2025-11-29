@@ -18,6 +18,7 @@ import {
   Trophy,
   FolderOpen,
   MessageSquare,
+  MessageCircle,
   ClipboardList,
   AlertTriangle,
   Stethoscope,
@@ -33,10 +34,11 @@ const NAV = [
 
   { href: '/rapportage', label: 'Rapportages', icon: ClipboardList },
   { href: '/incidenten', label: 'Incidenten', icon: AlertTriangle },
+  { href: '/herstelgesprekken', label: 'Herstelgesprekken', icon: MessageSquare },
   { href: '/sportindicaties', label: 'Sportindicaties', icon: Stethoscope },
   { href: '/sportmutaties', label: 'Sportmutaties', icon: Activity },
   { href: '/extra-sportmomenten', label: 'Extra Sport', icon: Dumbbell },
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/telefoonnummers', label: 'Telefoonnummers', icon: Phone }, // Added Phone Numbers link
   { href: '/bestanden', label: 'Bestanden', icon: FolderOpen }, // Added Bestanden link
   { href: '/reserveringen', label: 'Reserveringen', icon: CalendarCheck },
@@ -52,10 +54,10 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="w-64 min-h-screen bg-[#0f172a] text-white flex flex-col shrink-0">
+    <aside className="w-64 min-h-screen bg-black text-white flex flex-col shrink-0 border-r border-gray-900">
       {/* Logo & Branding */}
       {/* Logo & Branding */}
-      <div className="p-6 border-b border-gray-800 relative overflow-hidden group">
+      <div className="p-6 border-b border-gray-900 relative overflow-hidden group">
         {/* Subtle background glow */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 opacity-50"></div>
 
@@ -79,7 +81,7 @@ export default function Sidebar() {
             <span className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-400">
               SportDash
             </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-900 text-gray-400 border border-gray-800">
               v1.0
             </span>
           </div>
@@ -99,8 +101,8 @@ export default function Sidebar() {
               className={
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium text-sm ' +
                 (active
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white')
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                  : 'text-gray-400 hover:bg-white/10 hover:text-white')
               }
             >
               <Icon size={18} />
@@ -111,7 +113,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User / Logout Section */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-gray-900">
         <div className="flex items-center gap-3 px-2 py-2 mb-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
             {user?.name?.charAt(0) || 'U'}
@@ -124,7 +126,7 @@ export default function Sidebar() {
 
         <button
           onClick={() => logout()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors border border-gray-700"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 text-sm transition-colors border border-gray-800"
         >
           <LogOut size={16} />
           <span>Uitloggen</span>
