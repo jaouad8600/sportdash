@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import QuickActions from '@/components/dashboard/QuickActions';
 import StatsOverview from '@/components/dashboard/StatsOverview';
 import TodaySchedule from '@/components/dashboard/TodaySchedule';
 
@@ -17,9 +16,6 @@ export default function DashboardPage() {
           {new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
       </div>
-
-      {/* Quick Actions Bar */}
-      <QuickActions />
 
       {/* Stats Overview Cards */}
       <StatsOverview />

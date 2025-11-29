@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/Sidebar";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import QuickActions from "@/components/dashboard/QuickActions";
 import { motion } from "framer-motion";
 
 export default function DashboardLayout({
@@ -34,6 +35,12 @@ export default function DashboardLayout({
         transition={{ delay: 4.0, duration: 0.5, ease: "easeOut" }}
       >
         <Breadcrumbs />
+
+        {/* Quick Actions - Available on all pages */}
+        <div className="max-w-[1600px] mx-auto mb-6">
+          <QuickActions />
+        </div>
+
         <div className="max-w-[1600px] mx-auto">
           {children}
         </div>
