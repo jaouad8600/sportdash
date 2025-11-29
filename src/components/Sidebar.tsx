@@ -87,6 +87,13 @@ export default function Sidebar() {
           </div>
           <div className="h-1 w-12 bg-orange-500 rounded-full mt-1"></div>
         </div>
+
+        {/* Current Date */}
+        <div className="mt-4 pt-3 border-t border-gray-800">
+          <div className="text-xs font-medium text-gray-400 text-center">
+            {new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}

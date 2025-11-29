@@ -10,13 +10,6 @@ import ExtraSportPriorityWidget from '@/components/dashboard/ExtraSportPriorityW
 export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Header Section */}
-      <div className="flex justify-end items-center">
-        <div className="text-lg font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 px-6 py-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 hidden md:block">
-          {new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </div>
-      </div>
-
       {/* Stats Overview Cards */}
       <StatsOverview />
 
