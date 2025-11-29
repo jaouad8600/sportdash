@@ -28,7 +28,7 @@ export interface ParsedIndication {
  * Parse mutation text using Gemini AI
  */
 export async function parseMutationText(text: string): Promise<ParsedMutation> {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `Je bent een expert in het analyseren van medische mutatie documenten voor jongeren in een jeugdzorginstelling.
 
@@ -80,7 +80,7 @@ Retourneer ALLEEN de JSON response, geen extra tekst.`;
  * Parse indication text using Gemini AI
  */
 export async function parseIndicationText(text: string): Promise<ParsedIndication> {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `Je bent een expert in het analyseren van medische indicatie documenten voor geïndiceerde activiteiten in een jeugdzorginstelling.
 
