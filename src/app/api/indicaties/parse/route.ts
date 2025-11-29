@@ -1,150 +1,108 @@
 import { NextResponse } from "next/server";
 import { parseIndicationText } from "@/services/medicalParser";
+import type { ParsedIndicatie } from "@/types/indication";
 
-// Enhanced fallback parser for medical service indication format
-function fallbackParser(text: string) {
+// Enhanced fallback parser for "Aanmelding geïndiceerde activiteiten" format
+function fallbackParser(text: string): ParsedIndicatie {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l);
 
     // Helper to extract field value
-    const extractField = (pattern: RegExp, multiline = false): string => {
-        if (multiline) {
-            const match = text.match(pattern);
-            return match ? match[1].trim() : "";
-        }
+    const extractField = (pattern: RegExp, defaultValue = ""): string => {
         for (const line of lines) {
             const match = line.match(pattern);
             if (match) return match[1].trim();
         }
-        return "";
+        return defaultValue;
     };
 
-    // Extract youth name - more flexible patterns
-    const youthName = extractField(/Naam\s+jongere:?\s*([^\n]+)/i) ||
-        extractField(/jongere:?\s*([^\n]+)/i) ||
-        extractField(/Pablo\s+de\s+Jeger/i) || // Example from screenshot
-        "Onbekend";
+    // Helper to extract multi-line sections
+    const extractSection = (startPattern: RegExp, endPattern?: RegExp): string => {
+        const match = text.match(startPattern);
+        if (!match) return "";
 
-    // Extract leefgroep (living group) - enhanced pattern
-    const leefgroep = extractField(/Leefgroep:?\s*([^\n]+)/i) ||
-        extractField(/groep:?\s*([^\n]+)/i);
-
-    // Extract indication types (Sport, Muziek, Creatief) - improved patterns
-    const sportMatch = text.match(/Sport\s*\(([^)]+)\)/i);
-    const musicMatch = text.match(/Muziek\s*\(([^)]+)\)/i);
-    const creativeMatch = text.match(/Creatief\s*aanbod\s*\(([^)]+)\)/i);
-
-    // Also check for X markers in table
-    const hasXMarker = (activityType: string): boolean => {
-        const pattern = new RegExp(`${activityType}.*?X`, 'gim');
-        return pattern.test(text);
-    };
-
-    const indicationTypes = [];
-    const responsiblePersons = [];
-
-    if (sportMatch || hasXMarker('Sport')) {
-        indicationTypes.push("Sport");
-        if (sportMatch) {
-            responsiblePersons.push(...sportMatch[1].split(',').map(s => s.trim()));
+        let content = match[1];
+        if (endPattern) {
+            const endMatch = content.match(endPattern);
+            if (endMatch) {
+                content = content.substring(0, endMatch.index);
+            }
         }
-    }
-    if (musicMatch || hasXMarker('Muziek')) {
-        indicationTypes.push("Muziek");
-        if (musicMatch) {
-            responsiblePersons.push(...musicMatch[1].split(',').map(s => s.trim()));
-        }
-    }
-    if (creativeMatch || hasXMarker('Creatief')) {
-        indicationTypes.push("Creatief");
-        if (creativeMatch) {
-            responsiblePersons.push(...creativeMatch[1].split(',').map(s => s.trim()));
-        }
-    }
 
-    // Extract responsible persons from format like "Orlando, Sebastiaan, etc."
-    if (responsiblePersons.length === 0) {
-        const respMatch = text.match(/Advies\/suggestie\s+betreft.*?:\s*([^\n]+)/i);
-        if (respMatch) {
-            responsiblePersons.push(...respMatch[1].split(',').map(s => s.trim()));
-        }
-    }
-
-    // Extract dates - multiple patterns
-    let validFromMatch = text.match(/Indicatie\s+afgegeven\s+van[^:]*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
-    if (!validFromMatch) {
-        validFromMatch = text.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
-    }
-
-    let validUntilMatch = text.match(/Indicatie\s+afgegeven\s+door:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
-    if (!validUntilMatch) {
-        validUntilMatch = text.match(/tot:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i);
-    }
-
-    // Convert DD-MM-YYYY to YYYY-MM-DD
-    const convertDate = (dateStr: string): string => {
-        const parts = dateStr.split(/[-/]/);
-        if (parts.length === 3) {
-            const day = parts[0].padStart(2, '0');
-            const month = parts[1].padStart(2, '0');
-            const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-            return `${year}-${month}-${day}`;
-        }
-        return dateStr;
-    };
-
-    const validFrom = validFromMatch ? convertDate(validFromMatch[1]) : new Date().toISOString().split('T')[0];
-    const validUntil = validUntilMatch ? convertDate(validUntilMatch[1]) : undefined;
-
-    // Extract issued by
-    const issuedBy = extractField(/afgegeven\s+door:?\s*([^\n]+)/i) || "Medische Dienst";
-
-    // Extract feedback to - enhanced pattern
-    const feedbackTo = extractField(/Terugkoppelen\s+voortgang\s+aan:?\s*([^\n]+)/i) ||
-        extractField(/GW/i); // From screenshot example
-
-    // Extract if can be combined with group - improved detection
-    const canCombineMatch = text.match(/Kan\s+gecombineerd.*?indicatie\?:?\s*(Ja|Nee|J|N)/i);
-    const canCombine = canCombineMatch ? canCombineMatch[1].toUpperCase().startsWith('J') : true;
-
-    // Extract underbouwing/rationale (main description) - improved multi-line extraction
-    let underbouwing = "";
-    const underbouwingMatch = text.match(/Onderbouwing\s+indicering:?\s*([\s\S]*?)(?=Begeleidings|Leerdoelen|$)/i);
-    if (underbouwingMatch) {
-        underbouwing = underbouwingMatch[1]
-            .replace(/^\s*-\s*/gm, '') // Remove leading dashes
+        return content
+            .replace(/^\s*-\s*/gm, '• ') // Convert dashes to bullets
             .trim()
-            .substring(0, 2000); // Increase limit
+            .substring(0, 3000); // Generous limit for long text
+    };
+
+    // 1. Naam jongere
+    const naamJongere = extractField(/Naam\s+jongere:?\s*([^\n]+)/i, "Onbekend");
+
+    // 2. Leefgroep
+    const leefgroep = extractField(/Leefgroep:?\s*([^\n]+)/i, "");
+
+    // 3. Indicatie activiteit - detect X markers
+    const indicatieActiviteit: string[] = [];
+
+    // Check for Sport with X marker
+    if (/Sport.*?X/i.test(text)) {
+        indicatieActiviteit.push("Sport");
+    }
+    // Check for Muziek with X marker
+    if (/Muziek.*?X/i.test(text)) {
+        indicatieActiviteit.push("Muziek");
+    }
+    // Check for Creatief with X marker
+    if (/Creatief.*?X/i.test(text)) {
+        indicatieActiviteit.push("Creatief aanbod");
     }
 
-    // Extract guidance tips - improved pattern
-    let guidanceTips = "";
-    const tipsMatch = text.match(/Begeleidingstips.*?diagnostiek:?\s*([\s\S]*?)(?=Als\s+Pablo|Leerdoelen|$)/i);
-    if (tipsMatch) {
-        guidanceTips = tipsMatch[1]
-            .replace(/^\s*-\s*/gm, '')
-            .trim()
-            .substring(0, 2000);
+    // 4. Advies/suggestie
+    const adviesInhoudActiviteit = extractField(/Advies\/suggestie\s+betreft\s+inhoud\s+activiteit:?\s*([^\n]+)/i, "-");
+
+    // 5. Indicatie van - tot (dates)
+    const indicatieVanTot = extractField(/Indicatie\s+afgegeven\s+van\s*[–-]\s*tot:?\s*([^\n]+)/i, "");
+
+    // 6. Indicatie afgegeven door
+    const indicatieAfgegevenDoor = extractField(/Indicatie\s+afgegeven\s+door:?\s*([^\n]+)/i, "");
+
+    // 7. Terugkoppelen aan
+    const terugkoppelingAan = extractField(/Terugkoppelen\s+voortgang\s+aan:?\s*([^\n]+)/i, "");
+
+    // 8. Kan gecombineerd worden?
+    const combineText = extractField(/Kan\s+gecombineerd\s+worden.*?indicatie\?:?\s*([^\n]+)/i);
+    let kanCombinerenMetGroepsgenoot: boolean | null = null;
+    if (combineText) {
+        kanCombinerenMetGroepsgenoot = /^(ja|j|yes|y)/i.test(combineText.trim());
     }
 
-    // Extract learning goals if present
-    const goalsMatch = text.match(/(?:werk\s+met|zonnende\s+periode)/i);
-    const hasGoals = goalsMatch !== null;
+    // 9. Onderbouwing indicering
+    const onderbouwingIndicering = extractSection(
+        /Onderbouwing\s+indicering:?\s*([\s\S]*?)(?=Bejegeningstips|Leerdoelen|$)/i
+    );
+
+    // 10. Bejegeningstips
+    const bejegeningstips = extractSection(
+        /Bejegeningstips\s+in\s+het\s+licht\s+van\s+de\s+diagnostiek:?\s*([\s\S]*?)(?=Leerdoelen|$)/i
+    );
+
+    // 11. Leerdoelen
+    let leerdoelen = extractSection(/Leerdoelen:?\s*\(?\s*indien\s+van\s+toepassing\s*\)?:?\s*([\s\S]*?)$/i);
+    if (/n\.?v\.?t\.?/i.test(leerdoelen)) {
+        leerdoelen = "N.v.t.";
+    }
 
     return {
-        youthName,
+        naamJongere,
         leefgroep,
-        indicationTypes: indicationTypes.join(', ') || "Sport",
-        type: indicationTypes.includes("Sport") ? "SPORT" : indicationTypes[0] || "OVERIG",
-        responsiblePersons: responsiblePersons.join(', '),
-        validFrom,
-        validUntil,
-        issuedBy,
-        feedbackTo,
-        canCombineWithGroup: canCombine,
-        description: underbouwing,
-        guidanceTips,
-        learningGoals: "", // Can be enhanced if format is more consistent
-        confidence: 0.85 // Higher confidence with improved parser
+        indicatieActiviteit,
+        adviesInhoudActiviteit,
+        indicatieVanTot,
+        indicatieAfgegevenDoor,
+        terugkoppelingAan,
+        kanCombinerenMetGroepsgenoot,
+        onderbouwingIndicering,
+        bejegeningstips,
+        leerdoelen
     };
 }
 
@@ -185,6 +143,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             ...parsed,
+            confidence: 0.85,
             warning: "Automatische AI-analyse niet beschikbaar. Controleer de ingevulde gegevens."
         });
 
