@@ -2,6 +2,82 @@ import { NextResponse } from "next/server";
 import { parseIndicationText } from "@/services/medicalParser";
 import type { ParsedIndicatie } from "@/types/indication";
 
+/**
+ * Genereert een korte, leesbare beschrijving voor weergave in de tabel
+ * Max 150 karakters, bevat de essentie van de indicatie
+ */
+function makeKorteBeschrijving(parsed: ParsedIndicatie): string {
+    // Prioriteit: onderbouwing > bejegeningstips > advies > leerdoelen
+    let bron = parsed.onderbouwingIndicering;
+
+    if (!bron || bron.length < 20) {
+        bron = parsed.bejegeningstips;
+    }
+    if (!bron || bron.length < 20) {
+        bron = parsed.adviesInhoudActiviteit;
+    }
+    if (!bron || bron.length < 20) {
+        bron = parsed.leerdoelen;
+    }
+
+    if (!bron || bron === "-" || bron === "N.v.t.") {
+        // Fallback: genereer beschrijving op basis van activiteit en naam
+        const activiteiten = Array.isArray(parsed.indicatieActiviteit)
+            ? parsed.indicatieActiviteit.join(", ")
+            : parsed.indicatieActiviteit;
+        return `${parsed.naamJongere} - ${activiteiten} indicatie${parsed.leefgroep ? ` voor ${parsed.leefgroep}` : ""}`;
+    }
+
+    // Clean up de tekst
+    let description = bron
+        .replace(/\n+/g, ' ') // Replace newlines with spaces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/^[•\-\*]\s*/gm, '') // Remove bullets
+        .trim();
+
+    // Neem eerste zin of eerste 150 karakters
+    const firstSentence = description.match(/^[^.!?]+[.!?]/);
+    if (firstSentence && firstSentence[0].length <= 150) {
+        return firstSentence[0].trim();
+    }
+
+    // Truncate op 150 karakters, bij laatste spatie
+    if (description.length > 150) {
+        description = description.substring(0, 150);
+        const lastSpace = description.lastIndexOf(' ');
+        if (lastSpace > 100) {
+            description = description.substring(0, lastSpace);
+        }
+        description += '...';
+    }
+
+    return description;
+}
+
+/**
+ * Parse datum string in verschillende formaten
+ * Ondersteunt: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD
+ */
+function parseDatum(dateStr: string): string | null {
+    if (!dateStr || dateStr === '-') return null;
+
+    const cleaned = dateStr.trim();
+
+    // Try DD-MM-YYYY or DD/MM/YYYY
+    const ddmmyyyy = cleaned.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (ddmmyyyy) {
+        const [, day, month, year] = ddmmyyyy;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try YYYY-MM-DD (already ISO format)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+        return cleaned;
+    }
+
+    return cleaned; // Return as-is if we can't parse
+}
+
 // Enhanced fallback parser for "Aanmelding geïndiceerde activiteiten" format
 function fallbackParser(text: string): ParsedIndicatie {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l);
@@ -59,8 +135,22 @@ function fallbackParser(text: string): ParsedIndicatie {
     // 4. Advies/suggestie
     const adviesInhoudActiviteit = extractField(/Advies\/suggestie\s+betreft\s+inhoud\s+activiteit:?\s*([^\n]+)/i, "-");
 
-    // 5. Indicatie van - tot (dates)
-    const indicatieVanTot = extractField(/Indicatie\s+afgegeven\s+van\s*[–-]\s*tot:?\s*([^\n]+)/i, "");
+    // 5. Indicatie van - tot (dates) - IMPROVED
+    const dateRangeText = extractField(/Indicatie\s+afgegeven\s+van\s*[–-]\s*tot:?\s*([^\n]+)/i, "");
+
+    let geldigVanaf: string | null = null;
+    let geldigTot: string | null = null;
+
+    if (dateRangeText) {
+        // Try to split into two dates
+        const dateParts = dateRangeText.split(/[–-]/);
+        if (dateParts.length >= 1) {
+            geldigVanaf = parseDatum(dateParts[0]);
+        }
+        if (dateParts.length >= 2) {
+            geldigTot = parseDatum(dateParts[1]);
+        }
+    }
 
     // 6. Indicatie afgegeven door
     const indicatieAfgegevenDoor = extractField(/Indicatie\s+afgegeven\s+door:?\s*([^\n]+)/i, "");
@@ -91,12 +181,14 @@ function fallbackParser(text: string): ParsedIndicatie {
         leerdoelen = "N.v.t.";
     }
 
-    return {
+    const parsed: ParsedIndicatie = {
         naamJongere,
         leefgroep,
         indicatieActiviteit,
         adviesInhoudActiviteit,
-        indicatieVanTot,
+        indicatieVanTot: dateRangeText, // Keep original for backwards compatibility
+        geldigVanaf: geldigVanaf || undefined,
+        geldigTot: geldigTot || undefined,
         indicatieAfgegevenDoor,
         terugkoppelingAan,
         kanCombinerenMetGroepsgenoot,
@@ -104,6 +196,8 @@ function fallbackParser(text: string): ParsedIndicatie {
         bejegeningstips,
         leerdoelen
     };
+
+    return parsed;
 }
 
 export async function POST(request: Request) {
@@ -141,8 +235,12 @@ export async function POST(request: Request) {
         console.log("Using fallback parser for indication text");
         const parsed = fallbackParser(text);
 
+        // Generate short description for table
+        const korteBeschrijving = makeKorteBeschrijving(parsed);
+
         return NextResponse.json({
             ...parsed,
+            korteBeschrijving,
             confidence: 0.85,
             warning: "Automatische AI-analyse niet beschikbaar. Controleer de ingevulde gegevens."
         });

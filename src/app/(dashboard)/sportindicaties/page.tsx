@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Filter, Calendar, User, Activity, CheckCircle, X, Edit2, Archive, Pause, Play, FileText, MessageSquare, Mail } from "lucide-react";
+import { Plus, Filter, Calendar, User, Activity, CheckCircle, X, Edit2, Archive, Pause, Play, FileText, MessageSquare, Mail, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ import { useIndications, useGroups } from "@/hooks/useSportData";
 import { useToast } from "@/hooks/useToast";
 import { SportIndication, Group, Youth } from "@prisma/client";
 import IndicationTextParser from "@/components/IndicationTextParser";
+import IndicationDetailModal from "@/components/IndicationDetailModal";
 import type { ParsedIndicatie } from "@/types/indication";
 
 // Define Evaluation locally if not exported or use any
@@ -57,6 +58,7 @@ export default function SportIndicationsPage() {
 
     // Edit/Action Modals
     const [editingIndication, setEditingIndication] = useState<IndicationWithRelations | null>(null);
+    const [showDetailModal, setShowDetailModal] = useState<IndicationWithRelations | null>(null);
     const [showEvaluationModal, setShowEvaluationModal] = useState<IndicationWithRelations | null>(null);
     const [showPauseModal, setShowPauseModal] = useState<IndicationWithRelations | null>(null);
     const [evaluationNotes, setEvaluationNotes] = useState("");
@@ -273,14 +275,17 @@ export default function SportIndicationsPage() {
         // 2. Set youth name
         setYouthName(parsed.naamJongere || "");
 
-        // 3. Set description from onderbouwing
-        setDescription(parsed.onderbouwingIndicering || "");
+        // 3. Set description - prefer korteBeschrijving for table, full onderbouwing for details
+        const tableDescription = parsed.korteBeschrijving || parsed.onderbouwingIndicering || "";
+        setDescription(tableDescription);
 
         // 4. Set type based on indicatie activiteit
         if (parsed.indicatieActiviteit.length > 0) {
             const firstActivity = parsed.indicatieActiviteit[0];
             if (firstActivity.toLowerCase().includes("sport")) {
                 setType("CARDIO"); // or appropriate type
+            } else if (firstActivity.toLowerCase().includes("kracht")) {
+                setType("KRACHT");
             } else if (firstActivity.toLowerCase().includes("muziek")) {
                 setType("OVERIG");
             } else {
@@ -288,9 +293,11 @@ export default function SportIndicationsPage() {
             }
         }
 
-        // 5. Set dates if available (need to parse the "van - tot" field)
-        if (parsed.indicatieVanTot) {
-            // Try to extract dates from format like "14-11-2025"
+        // 5. Set dates - prefer parsed geldigVanaf/geldigTot if available
+        if (parsed.geldigVanaf) {
+            setValidFrom(parsed.geldigVanaf);
+        } else if (parsed.indicatieVanTot) {
+            // Fallback: try to extract date from old format
             const dateMatch = parsed.indicatieVanTot.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
             if (dateMatch) {
                 // Convert DD-MM-YYYY to YYYY-MM-DD
@@ -302,6 +309,10 @@ export default function SportIndicationsPage() {
                     setValidFrom(`${year}-${month}-${day}`);
                 }
             }
+        }
+
+        if (parsed.geldigTot) {
+            setValidUntil(parsed.geldigTot);
         }
 
         // 6. Set other fields
@@ -322,11 +333,17 @@ export default function SportIndicationsPage() {
     if (loadingIndications || loadingGroups) return <div className="p-8">Laden...</div>;
 
     return (
-        <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
+        <div className="max-w-[1600px] mx-auto">
+            {/* Header - Animated */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="flex justify-between items-center mb-8"
+            >
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Sportindicaties</h1>
-                    <p className="text-gray-500 mt-1">Beheer extra sportmomenten op indicatie</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sportindicaties</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Beheer extra sportmomenten op indicatie</p>
                 </div>
                 <div className="flex gap-4">
                     <button
@@ -339,137 +356,224 @@ export default function SportIndicationsPage() {
                     </button>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 font-medium"
                     >
                         <Plus size={20} />
                         Nieuwe Indicatie
                     </button>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Filters (Placeholder) */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex gap-4">
-                <div className="flex items-center text-gray-500">
+            {/* Filters - Animated with delay */}
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+                className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 flex gap-4"
+            >
+                <div className="flex items-center text-gray-500 dark:text-gray-400">
                     <Filter size={18} className="mr-2" />
                     <span className="text-sm font-medium">Filters:</span>
                 </div>
-                <select className="bg-gray-50 border-none text-sm rounded-md px-3 py-1 focus:ring-0">
+                <select className="bg-gray-50 dark:bg-gray-700 border-none text-sm rounded-md px-3 py-1 focus:ring-0 text-gray-900 dark:text-gray-100">
                     <option>Alle Groepen</option>
                     {groups?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
-                <select className="bg-gray-50 border-none text-sm rounded-md px-3 py-1 focus:ring-0">
+                <select className="bg-gray-50 dark:bg-gray-700 border-none text-sm rounded-md px-3 py-1 focus:ring-0 text-gray-900 dark:text-gray-100">
                     <option>Alle Types</option>
                     {INDICATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-            </div>
+            </motion.div>
 
-            {/* List */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Jongere</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Groep</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Omschrijving</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Geldigheid</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Actie</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {indications.length === 0 ? (
+            {/* Table - Animated with delay */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+            >
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0">
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">
-                                    Geen indicaties gevonden.
-                                </td>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[12%]">Jongere</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[8%]">Groep</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[6%]">Type</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[20%]">Beschrijving</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[9%]">Geldig Vanaf</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[9%]">Geldig Tot</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[10%]">Issued By</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[8%]">Feedback</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide w-[8%]">Combinatie</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide text-right w-[10%]">Actie</th>
                             </tr>
-                        ) : (
-                            indications.map((m) => (
-                                <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 mr-3">
-                                                <User size={14} />
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {indications.length === 0 ? (
+                                <tr>
+                                    <td colSpan={10} className="px-6 py-12 text-center text-gray-400">
+                                        <User className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                                        <p className="font-medium">Geen indicaties gevonden</p>
+                                        <p className="text-sm mt-1">Klik op "Nieuwe Indicatie" om te beginnen</p>
+                                    </td>
+                                </tr>
+                            ) : (
+                                indications.map((m, index) => (
+                                    <motion.tr
+                                        key={m.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3, delay: 0.3 + (index * 0.03) }}
+                                        onClick={() => setShowDetailModal(m)}
+                                        className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer group"
+                                    >
+                                        {/* Jongere */}
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                                    <User size={14} className="text-blue-600 dark:text-blue-400" />
+                                                </div>
+                                                <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
+                                                    {m.youth ? `${m.youth.firstName} ${m.youth.lastName}` : "Onbekend"}
+                                                </span>
                                             </div>
-                                            <span className="font-medium text-gray-900">
-                                                {m.youth ? `${m.youth.firstName} ${m.youth.lastName}` : "Onbekend"}
+                                        </td>
+
+                                        {/* Groep */}
+                                        <td className="px-4 py-3.5">
+                                            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                {m.group?.name || "?"}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                            {m.group?.name || "Onbekend"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-gray-900">{m.type}</span>
-                                            <span className="text-xs text-gray-500 line-clamp-2">
-                                                {m.description && m.description.length > 150
-                                                    ? `${m.description.substring(0, 150)}...`
-                                                    : m.description}
+                                        </td>
+
+                                        {/* Type */}
+                                        <td className="px-4 py-3.5">
+                                            <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                                {m.type}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center text-sm text-gray-600">
-                                            <Calendar size={14} className="mr-2 text-gray-400" />
-                                            {(() => {
-                                                try {
-                                                    return format(new Date(m.validFrom), "d MMM", { locale: nl });
-                                                } catch {
-                                                    return "Datum onbekend";
-                                                }
-                                            })()}
-                                            {" - "}
-                                            {m.validUntil ? (() => {
-                                                try {
-                                                    return format(new Date(m.validUntil), "d MMM", { locale: nl });
-                                                } catch {
-                                                    return "...";
-                                                }
-                                            })() : "..."}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex gap-1">
+                                        </td>
+
+                                        {/* Beschrijving - truncated */}
+                                        <td className="px-4 py-3.5">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed">
+                                                {m.description && m.description.length > 100
+                                                    ? `${m.description.substring(0, 100)}...`
+                                                    : m.description || "Geen omschrijving"}
+                                            </p>
+                                        </td>
+
+                                        {/* Geldig Vanaf */}
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                                <Calendar size={12} className="text-gray-400 flex-shrink-0" />
+                                                <span className="font-medium">
+                                                    {format(new Date(m.validFrom), "dd MMM yyyy", { locale: nl })}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Geldig Tot */}
+                                        <td className="px-4 py-3.5">
+                                            {m.validUntil ? (
+                                                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                                    <Calendar size={12} className="text-gray-400 flex-shrink-0" />
+                                                    <span className="font-medium">
+                                                        {format(new Date(m.validUntil), "dd MMM yyyy", { locale: nl })}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 dark:text-gray-500 italic">Onbepaald</span>
+                                            )}
+                                        </td>
+
+                                        {/* Issued By */}
+                                        <td className="px-4 py-3.5">
+                                            <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                                                {m.issuedBy || "-"}
+                                            </span>
+                                        </td>
+
+                                        {/* Feedback To */}
+                                        <td className="px-4 py-3.5">
+                                            <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                                                {m.feedbackTo || "-"}
+                                            </span>
+                                        </td>
+
+                                        {/* Can Combine */}
+                                        <td className="px-4 py-3.5">
+                                            {m.canCombineWithGroup ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold border border-green-200 dark:border-green-800">
+                                                    <CheckCircle size={12} />
+                                                    Ja
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs font-semibold border border-gray-200 dark:border-gray-600">
+                                                    <X size={12} />
+                                                    Nee
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Actie */}
+                                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1">
                                                 <button
-                                                    onClick={() => startEditIndication(m)}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowDetailModal(m);
+                                                    }}
+                                                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Bekijken"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        startEditIndication(m);
+                                                    }}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"
                                                     title="Bewerken"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => setShowEvaluationModal(m)}
-                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                    title="Evaluatie Toevoegen"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowEvaluationModal(m);
+                                                    }}
+                                                    className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-all"
+                                                    title="Evaluatie"
                                                 >
                                                     <MessageSquare size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleArchiveIndication(m.id)}
-                                                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleArchiveIndication(m.id);
+                                                    }}
+                                                    className="p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
                                                     title="Archiveren"
                                                 >
                                                     <Archive size={16} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleEndIndication(m.id)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Beëindigen"
-                                                >
-                                                    <X size={16} />
-                                                </button>
                                             </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                        </td>
+                                    </motion.tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </motion.div>
+
+            {/* Detail Modal */}
+            <IndicationDetailModal
+                indication={showDetailModal}
+                isOpen={!!showDetailModal}
+                onClose={() => setShowDetailModal(null)}
+            />
 
             {/* Modal */}
             {showModal && (
