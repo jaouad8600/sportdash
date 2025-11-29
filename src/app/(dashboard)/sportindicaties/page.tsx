@@ -66,22 +66,19 @@ export default function SportIndicationsPage() {
     const [pauseReason, setPauseReason] = useState("");
     const [selectedEvaluations, setSelectedEvaluations] = useState<string[]>([]);
 
-    // Form State - Basic
-    const [selectedGroup, setSelectedGroup] = useState("");
-    const [youthName, setYouthName] = useState("");
-    const [description, setDescription] = useState("");
-    const [type, setType] = useState<string>(INDICATION_TYPES[0]);
-    const [validFrom, setValidFrom] = useState(new Date().toISOString().split("T")[0]);
-    const [validUntil, setValidUntil] = useState("");
-
-    // Form State - Medical Service Fields
+    // Form State - Nieuwe structuur (1-op-1 met "Aanmelding geïndiceerde activiteiten")
+    const [naamJongere, setNaamJongere] = useState("");
     const [leefgroep, setLeefgroep] = useState("");
-    const [responsiblePersons, setResponsiblePersons] = useState("");
-    const [issuedBy, setIssuedBy] = useState("Medische Dienst");
-    const [feedbackTo, setFeedbackTo] = useState("");
-    const [canCombine, setCanCombine] = useState(true);
-    const [guidanceTips, setGuidanceTips] = useState("");
-    const [learningGoals, setLearningGoals] = useState("");
+    const [indicatieActiviteiten, setIndicatieActiviteiten] = useState<string[]>([]); // Sport, Muziek, Creatief
+    const [adviesInhoudActiviteit, setAdviesInhoudActiviteit] = useState("");
+    const [geldigVanaf, setGeldigVanaf] = useState(new Date().toISOString().split("T")[0]);
+    const [geldigTot, setGeldigTot] = useState("");
+    const [indicatieAfgegevenDoor, setIndicatieAfgegevenDoor] = useState("Medische Dienst");
+    const [terugkoppelingAan, setTerugkoppelingAan] = useState("");
+    const [kanCombinerenMetGroepsgenoot, setKanCombinerenMetGroepsgenoot] = useState(true);
+    const [onderbouwingIndicering, setOnderbouwingIndicering] = useState("");
+    const [bejegeningstips, setBejegeningstips] = useState("");
+    const [leerdoelen, setLeerdoelen] = useState("");
 
     useEffect(() => {
         if (searchParams.get("new") === "true") {
@@ -91,15 +88,51 @@ export default function SportIndicationsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validatie
+        if (!naamJongere.trim()) {
+            toast.error("Naam jongere is verplicht");
+            return;
+        }
+        if (!leefgroep) {
+            toast.error("Leefgroep is verplicht");
+            return;
+        }
+        if (indicatieActiviteiten.length === 0) {
+            toast.error("Selecteer minimaal één indicatie activiteit");
+            return;
+        }
+        if (!onderbouwingIndicering.trim()) {
+            toast.error("Onderbouwing indicering is verplicht");
+            return;
+        }
+
         try {
+            // Find group ID
+            const group = groups?.find(g => g.name === leefgroep);
+            if (!group) {
+                toast.error("Leefgroep niet gevonden");
+                return;
+            }
+
+            // Bepaal type op basis van indicatie activiteiten
+            const type = indicatieActiviteiten.includes("Sport") ? "CARDIO" : "OVERIG";
+
             const body: any = {
-                groupId: selectedGroup,
-                youthName: youthName, // Send youthName for creation/linking
-                description: description,
+                groupId: group.id,
+                youthName: naamJongere,
+                description: onderbouwingIndicering, // Gebruik volledige onderbouwing als description
                 type,
-                validFrom: new Date(validFrom),
-                validUntil: validUntil ? new Date(validUntil) : undefined,
-                issuedBy,
+                validFrom: new Date(geldigVanaf),
+                validUntil: geldigTot ? new Date(geldigTot) : undefined,
+                issuedBy: indicatieAfgegevenDoor,
+                feedbackTo: terugkoppelingAan,
+                canCombineWithGroup: kanCombinerenMetGroepsgenoot,
+                guidanceTips: bejegeningstips,
+                learningGoals: leerdoelen,
+                // Extra velden opslaan als metadata/comment indien nodig
+                activities: indicatieActiviteiten.join(", "),
+                advice: adviesInhoudActiviteit,
             };
 
             await createIndication.mutateAsync(body);
@@ -196,11 +229,16 @@ export default function SportIndicationsPage() {
     const handleEditIndication = async () => {
         if (!editingIndication) return;
         try {
+            // Bepaal type op basis van indicatie activiteiten
+            const type = indicatieActiviteiten.includes("Sport") ? "CARDIO" : "OVERIG";
+
             await updateIndication.mutateAsync({
                 id: editingIndication.id,
-                description,
+                description: onderbouwingIndicering,
                 type: type as any,
-                validUntil: validUntil ? new Date(validUntil) : undefined,
+                validUntil: geldigTot ? new Date(geldigTot) : undefined,
+                guidanceTips: bejegeningstips,
+                learningGoals: leerdoelen,
             });
             setEditingIndication(null);
             resetForm();
@@ -243,90 +281,75 @@ export default function SportIndicationsPage() {
 
     const startEditIndication = (indication: IndicationWithRelations) => {
         setEditingIndication(indication);
-        setDescription(indication.description);
-        setType(indication.type);
-        setValidUntil(indication.validUntil ? new Date(indication.validUntil).toISOString().split('T')[0] : "");
+        setOnderbouwingIndicering(indication.description);
+        setGeldigTot(indication.validUntil ? new Date(indication.validUntil).toISOString().split('T')[0] : "");
+        setBejegeningstips(indication.guidanceTips || "");
+        setLeerdoelen(indication.learningGoals || "");
         setShowModal(true);
         setActiveTab("manual");
     };
 
     const resetForm = () => {
-        setSelectedGroup("");
-        setYouthName("");
-        setDescription("");
-        setType(INDICATION_TYPES[0]);
-        setValidUntil("");
+        setNaamJongere("");
+        setLeefgroep("");
+        setIndicatieActiviteiten([]);
+        setAdviesInhoudActiviteit("");
+        setGeldigVanaf(new Date().toISOString().split("T")[0]);
+        setGeldigTot("");
+        setIndicatieAfgegevenDoor("Medische Dienst");
+        setTerugkoppelingAan("");
+        setKanCombinerenMetGroepsgenoot(true);
+        setOnderbouwingIndicering("");
+        setBejegeningstips("");
+        setLeerdoelen("");
         setActiveTab("manual");
     };
 
     const handleParsedData = (parsed: ParsedIndicatie) => {
-        // Map parsed data to form fields
+        // Map parsed data to new form fields (1-op-1 met officieel formulier)
 
-        // 1. Find matching group based on leefgroep
-        if (parsed.leefgroep) {
-            const group = groups?.find(g =>
-                g.name.toLowerCase().includes(parsed.leefgroep.toLowerCase())
-            );
-            if (group) {
-                setSelectedGroup(group.id);
-            }
-        }
+        // 1. Naam jongere
+        setNaamJongere(parsed.naamJongere || "");
 
-        // 2. Set youth name
-        setYouthName(parsed.naamJongere || "");
-
-        // 3. Set description - prefer korteBeschrijving for table, full onderbouwing for details
-        const tableDescription = parsed.korteBeschrijving || parsed.onderbouwingIndicering || "";
-        setDescription(tableDescription);
-
-        // 4. Set type based on indicatie activiteit
-        if (parsed.indicatieActiviteit.length > 0) {
-            const firstActivity = parsed.indicatieActiviteit[0];
-            if (firstActivity.toLowerCase().includes("sport")) {
-                setType("CARDIO"); // or appropriate type
-            } else if (firstActivity.toLowerCase().includes("kracht")) {
-                setType("KRACHT");
-            } else if (firstActivity.toLowerCase().includes("muziek")) {
-                setType("OVERIG");
-            } else {
-                setType("OVERIG");
-            }
-        }
-
-        // 5. Set dates - prefer parsed geldigVanaf/geldigTot if available
-        if (parsed.geldigVanaf) {
-            setValidFrom(parsed.geldigVanaf);
-        } else if (parsed.indicatieVanTot) {
-            // Fallback: try to extract date from old format
-            const dateMatch = parsed.indicatieVanTot.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{4})/);
-            if (dateMatch) {
-                // Convert DD-MM-YYYY to YYYY-MM-DD
-                const parts = dateMatch[1].split(/[-/]/);
-                if (parts.length === 3) {
-                    const day = parts[0].padStart(2, '0');
-                    const month = parts[1].padStart(2, '0');
-                    const year = parts[2];
-                    setValidFrom(`${year}-${month}-${day}`);
-                }
-            }
-        }
-
-        if (parsed.geldigTot) {
-            setValidUntil(parsed.geldigTot);
-        }
-
-        // 6. Set other fields
+        // 2. Leefgroep (direct de naam, niet het ID)
         setLeefgroep(parsed.leefgroep || "");
-        setIssuedBy(parsed.indicatieAfgegevenDoor || "Medische Dienst");
-        setFeedbackTo(parsed.terugkoppelingAan || "");
-        setCanCombine(parsed.kanCombinerenMetGroepsgenoot ?? true);
-        setGuidanceTips(parsed.bejegeningstips || "");
-        setLearningGoals(parsed.leerdoelen || "");
 
-        // 7. Switch to manual tab to show filled form
+        // 3. Indicatie voor (array van activiteiten)
+        setIndicatieActiviteiten(parsed.indicatieActiviteit || []);
+
+        // 4. Advies/suggestie
+        setAdviesInhoudActiviteit(parsed.adviesInhoudActiviteit || "");
+
+        // 5. Geldig vanaf/tot
+        if (parsed.geldigVanaf) {
+            setGeldigVanaf(parsed.geldigVanaf);
+        }
+        if (parsed.geldigTot) {
+            setGeldigTot(parsed.geldigTot);
+        }
+
+        // 6. Indicatie afgegeven door
+        setIndicatieAfgegevenDoor(parsed.indicatieAfgegevenDoor || "Medische Dienst");
+
+        // 7. Terugkoppeling aan
+        setTerugkoppelingAan(parsed.terugkoppelingAan || "");
+
+        // 8. Kan combineren met groepsgenoot
+        setKanCombinerenMetGroepsgenoot(parsed.kanCombinerenMetGroepsgenoot ?? true);
+
+        // 9. Onderbouwing indicering
+        setOnderbouwingIndicering(parsed.onderbouwingIndicering || "");
+
+        // 10. Bejegeningstips
+        setBejegeningstips(parsed.bejegeningstips || "");
+
+        // 11. Leerdoelen
+        setLeerdoelen(parsed.leerdoelen || "");
+
+        // Switch to manual tab to show filled form
         setActiveTab("manual");
 
-        // 8. Show success message
+        // Show success message
         toast.success("✅ Tekst geanalyseerd! Controleer de velden en pas aan indien nodig.");
     };
 
@@ -348,8 +371,8 @@ export default function SportIndicationsPage() {
                 <div className="flex gap-4">
                     <button
                         onClick={() => setShowArchived(!showArchived)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${showArchived ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
+                        className={`flex items - center gap - 2 px - 4 py - 2 rounded - lg transition - all font - medium ${showArchived ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            } `}
                     >
                         <Archive size={20} />
                         {showArchived ? "Toon Actief" : "Archief"}
@@ -434,7 +457,7 @@ export default function SportIndicationsPage() {
                                                     <User size={14} className="text-blue-600 dark:text-blue-400" />
                                                 </div>
                                                 <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
-                                                    {m.youth ? `${m.youth.firstName} ${m.youth.lastName}` : "Onbekend"}
+                                                    {m.youth ? `${m.youth.firstName} ${m.youth.lastName} ` : "Onbekend"}
                                                 </span>
                                             </div>
                                         </td>
@@ -594,20 +617,20 @@ export default function SportIndicationsPage() {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("manual")}
-                                className={`px-4 py-3 font-medium text-sm transition-colors relative ${activeTab === "manual"
-                                    ? "text-purple-600 border-b-2 border-purple-600"
-                                    : "text-gray-500 hover:text-gray-700"
-                                    }`}
+                                className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "manual"
+                                        ? "text-purple-600 border-b-2 border-purple-600"
+                                        : "text-gray-500 hover:text-gray-700"
+                                    } `}
                             >
                                 Handmatig
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("paste")}
-                                className={`px-4 py-3 font-medium text-sm transition-colors relative ${activeTab === "paste"
-                                    ? "text-purple-600 border-b-2 border-purple-600"
-                                    : "text-gray-500 hover:text-gray-700"
-                                    }`}
+                                className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "paste"
+                                        ? "text-purple-600 border-b-2 border-purple-600"
+                                        : "text-gray-500 hover:text-gray-700"
+                                    } `}
                             >
                                 Plak Tekst
                             </button>
@@ -781,7 +804,7 @@ export default function SportIndicationsPage() {
                                             </div>
 
                                             {showEvaluationModal.evaluations.map((evalItem) => (
-                                                <div key={evalItem.id} className={`bg-white p-4 rounded-xl border transition-shadow ${selectedEvaluations.includes(evalItem.id) ? 'border-blue-200 shadow-md' : 'border-gray-200 shadow-sm hover:shadow-md'}`}>
+                                                <div key={evalItem.id} className={`bg - white p - 4 rounded - xl border transition - shadow ${selectedEvaluations.includes(evalItem.id) ? 'border-blue-200 shadow-md' : 'border-gray-200 shadow-sm hover:shadow-md'} `}>
                                                     <div className="flex justify-between items-start mb-2">
                                                         <div className="flex items-center gap-3">
                                                             <input
@@ -841,19 +864,19 @@ export default function SportIndicationsPage() {
                                                                     }
                                                                 })();
 
-                                                                const subject = encodeURIComponent(`Evaluatie sportindicatie ${showEvaluationModal.youth?.firstName || ''} - ${dateStr}`);
+                                                                const subject = encodeURIComponent(`Evaluatie sportindicatie ${showEvaluationModal.youth?.firstName || ''} - ${dateStr} `);
                                                                 const body = encodeURIComponent(
                                                                     `Hierbij de evaluatie van de sportindicatie.\n\n` +
-                                                                    `Jongere: ${showEvaluationModal.youth?.firstName} ${showEvaluationModal.youth?.lastName}\n` +
-                                                                    `Datum evaluatie: ${dateLongStr}\n` +
-                                                                    `Ingevuld door: ${evalItem.author || "Onbekend"}\n\n` +
-                                                                    `Evaluatie:\n${evalItem.summary}\n`
+                                                                    `Jongere: ${showEvaluationModal.youth?.firstName} ${showEvaluationModal.youth?.lastName} \n` +
+                                                                    `Datum evaluatie: ${dateLongStr} \n` +
+                                                                    `Ingevuld door: ${evalItem.author || "Onbekend"} \n\n` +
+                                                                    `Evaluatie: \n${evalItem.summary} \n`
                                                                 );
 
                                                                 // Mark as mailed
                                                                 markEvaluationsAsMailed.mutateAsync([evalItem.id]);
 
-                                                                window.location.href = `mailto:?subject=${subject}&body=${body}`;
+                                                                window.location.href = `mailto:? subject = ${subject}& body=${body} `;
                                                             }}
                                                             className="text-gray-400 hover:text-blue-600 transition-colors"
                                                             title="Mail deze evaluatie"
