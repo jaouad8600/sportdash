@@ -1,12 +1,28 @@
-import { clsx } from "clsx";
-type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "outline";
+"use client";
+import { ComponentProps } from "react";
+import clsx from "clsx";
+
+type Props = ComponentProps<"button"> & {
+  variant?: "primary" | "secondary" | "ghost" | "danger";
 };
-export function Button({ className, variant = "outline", ...props }: Props) {
-  const base = "px-3 py-2 rounded-xl border text-sm transition";
-  const styles =
-    variant === "primary"
-      ? "bg-brand-600 text-white border-brand-600 hover:bg-brand-700"
-      : "border-zinc-200 hover:bg-zinc-50";
-  return <button className={clsx(base, styles, className)} {...props} />;
+export default function Button({
+  className,
+  variant = "primary",
+  ...rest
+}: Props) {
+  return (
+    <button
+      className={clsx(
+        "btn",
+        {
+          "btn-primary": variant === "primary",
+          "btn-secondary": variant === "secondary",
+          "btn-ghost": variant === "ghost",
+          "btn-danger": variant === "danger",
+        },
+        className,
+      )}
+      {...rest}
+    />
+  );
 }

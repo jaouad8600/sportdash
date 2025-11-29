@@ -403,7 +403,11 @@ export default function SportIndicationsPage() {
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium text-gray-900">{m.type}</span>
-                                            <span className="text-xs text-gray-500">{m.description}</span>
+                                            <span className="text-xs text-gray-500 line-clamp-2">
+                                                {m.description && m.description.length > 150
+                                                    ? `${m.description.substring(0, 150)}...`
+                                                    : m.description}
+                                            </span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
