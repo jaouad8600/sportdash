@@ -88,11 +88,11 @@ export default function GroupsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 font-serif">
-            <Users className="text-teylingereind-royal" size={32} />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3 font-serif">
+            <Users className="text-teylingereind-royal dark:text-blue-400" size={32} />
             Groepen
           </h1>
-          <p className="text-gray-500 text-lg mt-1">
+          <p className="text-gray-500 dark:text-gray-400 text-lg mt-1">
             Beheer groepen, kleuren en notities
           </p>
         </div>
@@ -104,14 +104,14 @@ export default function GroupsPage() {
           {groups.map((group) => (
             <div
               key={group.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all"
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition-all"
             >
               <div className="p-6">
                 {/* Header with Color Picker */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <Link href={`/groepen/${group.id}`} className="hover:opacity-80 transition-opacity">
-                      <h2 className="text-xl font-bold text-gray-800 font-serif hover:text-blue-600 cursor-pointer">{group.name}</h2>
+                      <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 font-serif hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">{group.name}</h2>
                       {/* Status Text */}
                       <div className="mt-2">
                         {(() => {
@@ -129,11 +129,11 @@ export default function GroupsPage() {
 
                           const colorClasses = (() => {
                             switch (group.color?.toUpperCase()) {
-                              case 'ROOD': return 'bg-red-100 text-red-800 border-red-200';
-                              case 'ORANJE': return 'bg-orange-100 text-orange-800 border-orange-200';
-                              case 'GEEL': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                              case 'GROEN': return 'bg-green-100 text-green-800 border-green-200';
-                              default: return 'bg-gray-100 text-gray-800 border-gray-200';
+                              case 'ROOD': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800';
+                              case 'ORANJE': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-800';
+                              case 'GEEL': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800';
+                              case 'GROEN': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800';
+                              default: return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
                             }
                           })();
 
@@ -161,22 +161,22 @@ export default function GroupsPage() {
                 <div className="mb-4">
                   {group.restorativeTalks && group.restorativeTalks.length > 0 ? (
                     <div className="space-y-2">
-                      <h3 className="text-xs font-bold text-teylingereind-orange uppercase tracking-wider flex items-center gap-1">
+                      <h3 className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1">
                         <MessageCircleWarning size={14} />
                         Herstelgesprekken ({group.restorativeTalks.length})
                       </h3>
                       {group.restorativeTalks.map(talk => (
-                        <div key={talk.id} className="bg-orange-50 border border-orange-100 p-2 rounded-lg text-sm">
-                          <div className="font-bold text-gray-800 flex justify-between">
+                        <div key={talk.id} className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 p-2 rounded-lg text-sm">
+                          <div className="font-bold text-gray-800 dark:text-gray-200 flex justify-between">
                             <span>{talk.youthName}</span>
-                            <span className="text-xs font-normal text-gray-500">o.l.v. {talk.createdBy || "Onbekend"}</span>
+                            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">o.l.v. {talk.createdBy || "Onbekend"}</span>
                           </div>
-                          <div className="text-xs text-gray-600 mt-0.5 truncate">{talk.reason}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 truncate">{talk.reason}</div>
                         </div>
                       ))}
                       <button
                         onClick={() => setRestorativeModalGroup(group)}
-                        className="w-full text-center text-xs text-teylingereind-orange hover:underline mt-1"
+                        className="w-full text-center text-xs text-orange-600 dark:text-orange-400 hover:underline mt-1"
                       >
                         Beheren
                       </button>
@@ -184,7 +184,7 @@ export default function GroupsPage() {
                   ) : (
                     <button
                       onClick={() => setRestorativeModalGroup(group)}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-50 text-gray-500 hover:bg-gray-100 border border-transparent transition-all"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent transition-all"
                     >
                       <MessageCircleWarning size={18} />
                       Geen Herstelgesprekken
@@ -194,46 +194,46 @@ export default function GroupsPage() {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-2 mb-6">
-                  <Link href="/sportmutaties" className="text-center p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer group/stat">
-                    <div className="flex justify-center text-red-500 mb-1 group-hover/stat:scale-110 transition-transform">
+                  <Link href="/sportmutaties" className="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-red-500 dark:text-red-400 mb-1 group-hover/stat:scale-110 transition-transform">
                       <Activity size={16} />
                     </div>
-                    <div className="text-lg font-bold text-gray-700">{group._count.mutations}</div>
-                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-red-600">Mutaties</div>
+                    <div className="text-lg font-bold text-gray-700 dark:text-gray-200">{group._count.mutations}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-medium group-hover/stat:text-red-600 dark:group-hover/stat:text-red-400">Mutaties</div>
                   </Link>
-                  <Link href="/sportindicaties" className="text-center p-2 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group/stat">
-                    <div className="flex justify-center text-purple-500 mb-1 group-hover/stat:scale-110 transition-transform">
+                  <Link href="/sportindicaties" className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-purple-500 dark:text-purple-400 mb-1 group-hover/stat:scale-110 transition-transform">
                       <Activity size={16} />
                     </div>
-                    <div className="text-lg font-bold text-gray-700">{group._count.indications}</div>
-                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-purple-600">Indicaties</div>
+                    <div className="text-lg font-bold text-gray-700 dark:text-gray-200">{group._count.indications}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-medium group-hover/stat:text-purple-600 dark:group-hover/stat:text-purple-400">Indicaties</div>
                   </Link>
-                  <Link href="/incidenten" className="text-center p-2 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer group/stat">
-                    <div className="flex justify-center text-orange-500 mb-1 group-hover/stat:scale-110 transition-transform">
+                  <Link href="/incidenten" className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors cursor-pointer group/stat">
+                    <div className="flex justify-center text-orange-500 dark:text-orange-400 mb-1 group-hover/stat:scale-110 transition-transform">
                       <AlertTriangle size={16} />
                     </div>
-                    <div className="text-lg font-bold text-gray-700">{group._count.restrictions || 0}</div>
-                    <div className="text-xs text-gray-500 font-medium group-hover/stat:text-orange-600">Beperkingen</div>
+                    <div className="text-lg font-bold text-gray-700 dark:text-gray-200">{group._count.restrictions || 0}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-medium group-hover/stat:text-orange-600 dark:group-hover/stat:text-orange-400">Beperkingen</div>
                   </Link>
                 </div>
 
                 {/* Notes Preview - Clickable */}
                 <div
                   onClick={() => setSelectedGroup({ id: group.id, name: group.name })}
-                  className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 min-h-[80px] cursor-pointer hover:bg-yellow-100 hover:border-yellow-200 transition-all hover:shadow-sm group"
+                  className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-100 dark:border-yellow-800 min-h-[80px] cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:border-yellow-200 dark:hover:border-yellow-700 transition-all hover:shadow-sm group"
                   title="Klik om notities te beheren"
                 >
-                  <h3 className="text-xs font-bold text-yellow-800 mb-1 uppercase tracking-wide flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-yellow-800 dark:text-yellow-400 mb-1 uppercase tracking-wide flex items-center justify-between">
                     Notities
-                    <span className="text-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity text-xs normal-case font-normal">
+                    <span className="text-yellow-600 dark:text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs normal-case font-normal">
                       Klik om te beheren
                     </span>
                   </h3>
-                  <p className="text-sm text-gray-700 line-clamp-3">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
                     {group.notes && group.notes.length > 0 ? (
                       group.notes[0].content
                     ) : (
-                      <span className="italic text-gray-400">Klik om notitie toe te voegen...</span>
+                      <span className="italic text-gray-400 dark:text-gray-500">Klik om notitie toe te voegen...</span>
                     )}
                   </p>
                 </div>
@@ -242,9 +242,9 @@ export default function GroupsPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <Users size={48} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500">Geen groepen gevonden</p>
+        <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+          <Users size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+          <p className="text-gray-500 dark:text-gray-400">Geen groepen gevonden</p>
         </div>
       )}
 
