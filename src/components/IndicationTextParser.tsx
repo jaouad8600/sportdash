@@ -11,7 +11,7 @@ interface IndicationTextParserProps {
 export default function IndicationTextParser({ onParsed }: IndicationTextParserProps) {
     const [pasteText, setPasteText] = useState('');
     const [isParsing, setIsParsing] = useState(false);
-    const [parsedData, setParsedData] = useState < ParsedIndication Response | null > (null);
+    const [parsedData, setParsedData] = useState<ParsedIndicationResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleAnalyze = async () => {
