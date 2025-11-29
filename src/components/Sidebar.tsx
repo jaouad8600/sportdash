@@ -90,8 +90,7 @@ export default function Sidebar() {
 
         {/* Current Date - Enhanced */}
         <div className="mt-5 pt-4 border-t border-gray-800/50">
-          <div className="flex items-center justify-center gap-2 bg-gradient-to-r from-gray-900/50 to-gray-800/30 p-2.5 rounded-lg border border-gray-800/50 backdrop-blur-sm">
-            <Calendar className="w-3.5 h-3.5 text-blue-400" />
+          <div className="bg-gradient-to-r from-gray-900/50 to-gray-800/30 p-2.5 rounded-lg border border-gray-800/50 backdrop-blur-sm">
             <div className="text-xs font-semibold text-gray-300 tracking-wide capitalize">
               {new Date().toLocaleDateString('nl-NL', {
                 weekday: 'long',
