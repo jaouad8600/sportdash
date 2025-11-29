@@ -601,25 +601,25 @@ export default function SportIndicationsPage() {
             {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                                 <Activity className="mr-2 text-purple-500" />
                                 Nieuwe Sportindicatie
                             </h2>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                 <X size={24} />
                             </button>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex border-b border-gray-200 bg-gray-50 px-6">
+                        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-6 sticky top-[73px] z-10">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("manual")}
                                 className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "manual"
-                                        ? "text-purple-600 border-b-2 border-purple-600"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "text-purple-600 border-b-2 border-purple-600"
+                                    : "text-gray-500 hover:text-gray-700"
                                     } `}
                             >
                                 Handmatig
@@ -628,8 +628,8 @@ export default function SportIndicationsPage() {
                                 type="button"
                                 onClick={() => setActiveTab("paste")}
                                 className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "paste"
-                                        ? "text-purple-600 border-b-2 border-purple-600"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "text-purple-600 border-b-2 border-purple-600"
+                                    : "text-gray-500 hover:text-gray-700"
                                     } `}
                             >
                                 Plak Tekst
