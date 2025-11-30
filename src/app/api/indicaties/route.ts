@@ -55,10 +55,25 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { groupId, youthId, youthName, description, type, validFrom, validUntil, issuedBy } = body;
+        const {
+            groupId, youthId, youthName, description, type, validFrom, validUntil, issuedBy,
+            feedbackTo, canCombineWithGroup, guidanceTips, learningGoals, advice, activities
+        } = body;
 
         if (!groupId || !description || !type || !validFrom) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        let finalDescription = description;
+
+        // Only append advice if it has meaningful content (not just "-" or whitespace)
+        if (advice && advice.trim() !== "" && advice.trim() !== "-") {
+            finalDescription += `\n\nAdvies/suggestie: ${advice}`;
+        }
+
+        // Only append activities if provided
+        if (activities && activities.trim() !== "") {
+            finalDescription += `\n\nActiviteiten: ${activities}`;
         }
 
         let finalYouthId = youthId;
@@ -93,12 +108,16 @@ export async function POST(request: Request) {
             data: {
                 groupId,
                 youthId: finalYouthId || null,
-                description,
+                description: finalDescription,
                 type,
                 validFrom: new Date(validFrom),
                 validUntil: validUntil ? new Date(validUntil) : null,
                 isActive: true,
                 issuedBy: issuedBy || "System",
+                feedbackTo,
+                canCombineWithGroup,
+                guidanceTips,
+                learningGoals,
             },
         });
 
@@ -112,7 +131,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
-        const { id, validUntil, isActive, evaluations } = body;
+        const {
+            id, validUntil, isActive, evaluations,
+            description, type, feedbackTo, canCombineWithGroup, guidanceTips, learningGoals
+        } = body;
 
         if (!id) {
             return NextResponse.json({ error: "ID required" }, { status: 400 });
@@ -123,6 +145,14 @@ export async function PUT(request: Request) {
         if (isActive !== undefined) data.isActive = isActive;
         if (evaluations) data.evaluations = evaluations;
 
+        // Allow updating other fields
+        if (description) data.description = description;
+        if (type) data.type = type;
+        if (feedbackTo !== undefined) data.feedbackTo = feedbackTo;
+        if (canCombineWithGroup !== undefined) data.canCombineWithGroup = canCombineWithGroup;
+        if (guidanceTips !== undefined) data.guidanceTips = guidanceTips;
+        if (learningGoals !== undefined) data.learningGoals = learningGoals;
+
         const indication = await prisma.sportIndication.update({
             where: { id },
             data,
@@ -132,5 +162,25 @@ export async function PUT(request: Request) {
     } catch (error) {
         console.error("Error updating indication:", error);
         return NextResponse.json({ error: "Failed to update indication" }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get("id");
+
+        if (!id) {
+            return NextResponse.json({ error: "ID required" }, { status: 400 });
+        }
+
+        await prisma.sportIndication.delete({
+            where: { id },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting indication:", error);
+        return NextResponse.json({ error: "Failed to delete indication" }, { status: 500 });
     }
 }

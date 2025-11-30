@@ -44,7 +44,7 @@ export default function IndicationTextParser({ onParsed }: IndicationTextParserP
                 onParsed(parsed);
             }
         } catch (err) {
-            console.error('Parse error:', err);
+            console.error('Parse error details:', err);
             setError(err instanceof Error ? err.message : 'Fout bij analyseren van tekst');
         } finally {
             setIsParsing(false);

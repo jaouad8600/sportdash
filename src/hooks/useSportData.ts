@@ -109,7 +109,16 @@ export const useIndications = (archived = false) => {
         },
     });
 
-    return { ...query, createIndication, updateIndication, addEvaluation, markEvaluationsAsMailed };
+    const deleteIndication = useMutation({
+        mutationFn: async (id: string) => {
+            await axios.delete(`/api/indicaties?id=${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sportIndications'] });
+        },
+    });
+
+    return { ...query, createIndication, updateIndication, addEvaluation, markEvaluationsAsMailed, deleteIndication };
 };
 
 // --- Groups ---

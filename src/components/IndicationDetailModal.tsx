@@ -77,7 +77,7 @@ export default function IndicationDetailModal({ indication, isOpen, onClose }: I
                                             {indication.group?.name || "Onbekend"}
                                         </span>
                                         <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-full border border-white/30">
-                                            {indication.type}
+                                            {indication.type === "CARDIO" ? "SPORT" : indication.type}
                                         </span>
                                     </div>
                                 </div>
@@ -111,7 +111,7 @@ export default function IndicationDetailModal({ indication, isOpen, onClose }: I
                                                     Geldig Tot
                                                 </p>
                                                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                    {indication.validUntil
+                                                    {indication.validUntil && new Date(indication.validUntil).getFullYear() > 1900
                                                         ? format(new Date(indication.validUntil), "dd MMMM yyyy", { locale: nl })
                                                         : "Onbepaald"}
                                                 </p>

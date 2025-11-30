@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Filter, Calendar, User, Activity, CheckCircle, X, Edit2, Archive, Pause, Play, FileText, MessageSquare, Mail, Eye } from "lucide-react";
+import {
+    Search, Plus, Filter, FileText, Calendar, User,
+    MoreVertical, CheckCircle, XCircle, AlertCircle,
+    Clock, ChevronDown, ChevronUp, Archive, RefreshCw,
+    Pause, Play, Edit2, Trash2, X, MessageSquare, Mail,
+    Eye, RotateCcw, Activity
+} from "lucide-react";
+import axios from 'axios';
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { SportIndication, Group, Youth } from "@prisma/client";
 import IndicationTextParser from "@/components/IndicationTextParser";
 import IndicationDetailModal from "@/components/IndicationDetailModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ParsedIndicatie } from "@/types/indication";
 
 // Define Evaluation locally if not exported or use any
@@ -32,7 +40,7 @@ type IndicationWithRelations = SportIndication & {
     evaluations: Evaluation[];
 };
 
-const INDICATION_TYPES = ["CARDIO", "KRACHT", "REVALIDATIE", "OVERIG"];
+const INDICATION_TYPES = ["SPORT", "KRACHT", "REVALIDATIE", "OVERIG"];
 
 export default function SportIndicationsPage() {
     const searchParams = useSearchParams();
@@ -45,7 +53,8 @@ export default function SportIndicationsPage() {
         createIndication,
         updateIndication,
         addEvaluation,
-        markEvaluationsAsMailed
+        markEvaluationsAsMailed,
+        deleteIndication
     } = useIndications(showArchived);
 
     const { data: groups, isLoading: loadingGroups } = useGroups();
@@ -80,6 +89,28 @@ export default function SportIndicationsPage() {
     const [bejegeningstips, setBejegeningstips] = useState("");
     const [leerdoelen, setLeerdoelen] = useState("");
 
+    // Confirm Dialog State
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        variant?: "danger" | "warning" | "info";
+        confirmLabel?: string;
+    }>({
+        isOpen: false,
+        title: "",
+        message: "",
+        onConfirm: () => { },
+        variant: "warning",
+        confirmLabel: "Bevestigen"
+    });
+
+    // Helper to close dialog
+    const closeConfirmDialog = () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+    };
+
     useEffect(() => {
         if (searchParams.get("new") === "true") {
             setShowModal(true);
@@ -107,68 +138,200 @@ export default function SportIndicationsPage() {
             return;
         }
 
+        const submitIndication = async () => {
+            try {
+                // Find group ID
+                const group = groups?.find(g => g.name === leefgroep);
+                if (!group) {
+                    toast.error("Leefgroep niet gevonden");
+                    return;
+                }
+
+                // Bepaal type op basis van indicatie activiteiten
+                const type = indicatieActiviteiten.includes("Sport") ? "CARDIO" : "OVERIG";
+
+                const body: any = {
+                    groupId: group.id,
+                    youthName: naamJongere,
+                    description: onderbouwingIndicering, // Gebruik volledige onderbouwing als description
+                    type,
+                    validFrom: new Date(geldigVanaf),
+                    validUntil: geldigTot ? new Date(geldigTot) : undefined,
+                    issuedBy: indicatieAfgegevenDoor,
+                    feedbackTo: terugkoppelingAan,
+                    canCombineWithGroup: kanCombinerenMetGroepsgenoot,
+                    guidanceTips: bejegeningstips,
+                    learningGoals: leerdoelen,
+                    // Extra velden opslaan als metadata/comment indien nodig
+                    activities: indicatieActiviteiten.join(", "),
+                    advice: adviesInhoudActiviteit,
+                };
+
+                await createIndication.mutateAsync(body);
+
+                setShowModal(false);
+                resetForm();
+                toast.success("Indicatie succesvol toegevoegd!");
+            } catch (error) {
+                console.error("Error saving indication", error);
+                toast.error("Fout bij opslaan.");
+            }
+        };
+
         try {
-            // Find group ID
-            const group = groups?.find(g => g.name === leefgroep);
-            if (!group) {
-                toast.error("Leefgroep niet gevonden");
-                return;
+            // Check for duplicates
+            const checkResponse = await fetch('/api/indicaties/check-duplicate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: naamJongere }),
+            });
+
+            if (checkResponse.ok) {
+                const checkResult = await checkResponse.json();
+                if (checkResult.exists) {
+                    setConfirmDialog({
+                        isOpen: true,
+                        title: "Dubbele Indicatie Gevonden",
+                        message: `Er bestaat al een indicatie(actief of gearchiveerd) voor ${naamJongere}. Weet je zeker dat je een nieuwe wilt aanmaken ? `,
+                        variant: "warning",
+                        onConfirm: () => {
+                            closeConfirmDialog();
+                            submitIndication();
+                        }
+                    });
+                    return;
+                }
             }
 
-            // Bepaal type op basis van indicatie activiteiten
-            const type = indicatieActiviteiten.includes("Sport") ? "CARDIO" : "OVERIG";
+            // If no duplicate, proceed directly
+            await submitIndication();
 
-            const body: any = {
-                groupId: group.id,
-                youthName: naamJongere,
-                description: onderbouwingIndicering, // Gebruik volledige onderbouwing als description
-                type,
-                validFrom: new Date(geldigVanaf),
-                validUntil: geldigTot ? new Date(geldigTot) : undefined,
-                issuedBy: indicatieAfgegevenDoor,
-                feedbackTo: terugkoppelingAan,
-                canCombineWithGroup: kanCombinerenMetGroepsgenoot,
-                guidanceTips: bejegeningstips,
-                learningGoals: leerdoelen,
-                // Extra velden opslaan als metadata/comment indien nodig
-                activities: indicatieActiviteiten.join(", "),
-                advice: adviesInhoudActiviteit,
-            };
-
-            await createIndication.mutateAsync(body);
-
-            setShowModal(false);
-            resetForm();
-            toast.success("Indicatie succesvol toegevoegd!");
         } catch (error) {
-            console.error("Error saving indication", error);
-            toast.error("Fout bij opslaan.");
+            console.error("Error checking duplicate", error);
+            // Fallback to submit if check fails
+            await submitIndication();
         }
     };
 
-    const handleEndIndication = async (id: string) => {
-        if (!confirm("Weet je zeker dat je deze indicatie wilt beëindigen?")) return;
-        try {
-            await updateIndication.mutateAsync({
-                id,
-                isActive: false,
-                validUntil: new Date(),
-            });
-        } catch (error) {
-            console.error("Error ending indication", error);
-        }
+    // Handle Delete
+    const handleDelete = (indication: IndicationWithRelations) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: "Indicatie Verwijderen",
+            message: `Weet je zeker dat je de indicatie voor ${indication.youth.firstName} ${indication.youth.lastName} definitief wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`,
+            variant: "danger",
+            confirmLabel: "Verwijderen",
+            onConfirm: async () => {
+                try {
+                    await deleteIndication.mutateAsync(indication.id);
+                    toast.success("Indicatie verwijderd");
+                    closeConfirmDialog();
+                } catch (error) {
+                    console.error("Error deleting indication", error);
+                    toast.error("Fout bij verwijderen");
+                }
+            }
+        });
     };
 
-    const handleArchiveIndication = async (id: string) => {
-        if (!confirm("Weet je zeker dat je deze indicatie wilt archiveren?")) return;
+    const handleArchive = (id: string) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: "Indicatie Archiveren",
+            message: "Weet je zeker dat je deze indicatie wilt archiveren?",
+            variant: "warning",
+            confirmLabel: "Archiveren",
+            onConfirm: async () => {
+                try {
+                    await updateIndication.mutateAsync({ id, isActive: false });
+                    toast.success("Indicatie gearchiveerd");
+                    closeConfirmDialog();
+                } catch (error) {
+                    console.error("Error archiving indication", error);
+                    toast.error("Fout bij archiveren");
+                }
+            }
+        });
+    };
+
+    const handleRestore = async (id: string) => {
+        const indication = indications.find(i => i.id === id);
+        if (!indication) return;
+
+        // Check for existing active indications
         try {
-            await updateIndication.mutateAsync({
-                id,
-                isActive: false,
+            const response = await axios.post('/api/indicaties/check-duplicate', {
+                firstName: indication.youth.firstName,
+                lastName: indication.youth.lastName
             });
+
+            const hasActive = response.data.indications.some((i: any) => i.isActive && i.id !== id);
+
+            if (hasActive) {
+                setConfirmDialog({
+                    isOpen: true,
+                    title: "Dubbele Actieve Indicatie",
+                    message: `Er is al een actieve indicatie voor ${indication.youth.firstName} ${indication.youth.lastName}. Weet je zeker dat je deze ook wilt activeren?`,
+                    variant: "warning",
+                    confirmLabel: "Toch Herstellen",
+                    onConfirm: async () => {
+                        try {
+                            await updateIndication.mutateAsync({ id, isActive: true });
+                            toast.success("Indicatie hersteld");
+                            closeConfirmDialog();
+                        } catch (error) {
+                            console.error("Error restoring indication", error);
+                            toast.error("Fout bij herstellen");
+                        }
+                    }
+                });
+                return;
+            }
         } catch (error) {
-            console.error("Error archiving indication", error);
+            console.error("Error checking for duplicates", error);
         }
+
+        setConfirmDialog({
+            isOpen: true,
+            title: "Indicatie Herstellen",
+            message: "Weet je zeker dat je deze indicatie wilt herstellen naar actief?",
+            variant: "info",
+            confirmLabel: "Herstellen",
+            onConfirm: async () => {
+                try {
+                    await updateIndication.mutateAsync({ id, isActive: true });
+                    toast.success("Indicatie hersteld");
+                    closeConfirmDialog();
+                } catch (error) {
+                    console.error("Error restoring indication", error);
+                    toast.error("Fout bij herstellen");
+                }
+            }
+        });
+    };
+
+    const handleEndIndication = (id: string) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: "Indicatie Beëindigen",
+            message: "Weet je zeker dat je deze indicatie wilt beëindigen? De einddatum wordt op vandaag gezet en de indicatie wordt gearchiveerd.",
+            variant: "warning",
+            confirmLabel: "Beëindigen",
+            onConfirm: async () => {
+                try {
+                    await updateIndication.mutateAsync({
+                        id,
+                        validUntil: new Date(),
+                        isActive: false
+                    });
+                    toast.success("Indicatie beëindigd");
+                    closeConfirmDialog();
+                } catch (error) {
+                    console.error("Error ending indication", error);
+                    toast.error("Fout bij beëindigen");
+                }
+            }
+        });
     };
 
     const handlePauseIndication = async () => {
@@ -192,10 +355,10 @@ export default function SportIndicationsPage() {
         if (evaluationsToMail.length === 0) return;
 
         // Construct email body
-        const subject = encodeURIComponent(`Evaluaties sportindicatie ${showEvaluationModal.youth?.firstName || ''} - ${format(new Date(), "d-M-yyyy")}`);
+        const subject = encodeURIComponent(`Evaluaties sportindicatie ${showEvaluationModal.youth?.firstName || ''} - ${format(new Date(), "d-M-yyyy")} `);
 
         let bodyText = `Hierbij de geselecteerde evaluaties van de sportindicatie.\n\n` +
-            `Jongere: ${showEvaluationModal.youth?.firstName} ${showEvaluationModal.youth?.lastName}\n\n`;
+            `Jongere: ${showEvaluationModal.youth?.firstName} ${showEvaluationModal.youth?.lastName} \n\n`;
 
         evaluationsToMail.forEach(evalItem => {
             const dateLongStr = (() => {
@@ -206,9 +369,9 @@ export default function SportIndicationsPage() {
                 }
             })();
 
-            bodyText += `--- Evaluatie van ${dateLongStr} ---\n` +
-                `Ingevuld door: ${evalItem.author || "Onbekend"}\n` +
-                `Evaluatie:\n${evalItem.summary}\n\n`;
+            bodyText += `-- - Evaluatie van ${dateLongStr} ---\n` +
+                `Ingevuld door: ${evalItem.author || "Onbekend"} \n` +
+                `Evaluatie: \n${evalItem.summary} \n\n`;
         });
 
         const body = encodeURIComponent(bodyText);
@@ -223,7 +386,7 @@ export default function SportIndicationsPage() {
             toast.error("Kon evaluaties niet markeren als gemaild, maar email wordt wel geopend.");
         }
 
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:? subject = ${subject}& body=${body} `;
     };
 
     const handleEditIndication = async () => {
@@ -356,7 +519,18 @@ export default function SportIndicationsPage() {
     if (loadingIndications || loadingGroups) return <div className="p-8">Laden...</div>;
 
     return (
-        <div className="max-w-[1600px] mx-auto">
+        <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+            {/* Confirm Dialog */}
+            <ConfirmDialog
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={closeConfirmDialog}
+                variant={confirmDialog.variant}
+                confirmLabel={confirmDialog.confirmLabel}
+            />
+
             {/* Header - Animated */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
@@ -371,8 +545,10 @@ export default function SportIndicationsPage() {
                 <div className="flex gap-4">
                     <button
                         onClick={() => setShowArchived(!showArchived)}
-                        className={`flex items - center gap - 2 px - 4 py - 2 rounded - lg transition - all font - medium ${showArchived ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            } `}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium border ${showArchived
+                            ? "bg-gray-800 text-white border-gray-800"
+                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
+                            }`}
                     >
                         <Archive size={20} />
                         {showArchived ? "Toon Actief" : "Archief"}
@@ -472,7 +648,7 @@ export default function SportIndicationsPage() {
                                         {/* Type */}
                                         <td className="px-4 py-3.5">
                                             <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                                                {m.type}
+                                                {m.type === "CARDIO" ? "SPORT" : m.type}
                                             </span>
                                         </td>
 
@@ -497,7 +673,7 @@ export default function SportIndicationsPage() {
 
                                         {/* Geldig Tot */}
                                         <td className="px-4 py-3.5">
-                                            {m.validUntil ? (
+                                            {m.validUntil && new Date(m.validUntil).getFullYear() > 1900 ? (
                                                 <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                                                     <Calendar size={12} className="text-gray-400 flex-shrink-0" />
                                                     <span className="font-medium">
@@ -538,49 +714,72 @@ export default function SportIndicationsPage() {
                                             )}
                                         </td>
 
-                                        {/* Actie */}
-                                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex items-center justify-end gap-1">
+                                        {/* Actions Column in Table */}
+                                        <td className="px-4 py-3.5 text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setShowDetailModal(m);
+                                                    onClick={() => {
+                                                        setEditingIndication(m);
+                                                        setNaamJongere(`${m.youth.firstName} ${m.youth.lastName}`);
+                                                        setLeefgroep(m.group.name);
+                                                        // Note: activities and advice are merged into description, so we can't easily pre-fill them separately without parsing
+                                                        setIndicatieActiviteiten([]);
+                                                        setAdviesInhoudActiviteit("");
+                                                        setGeldigVanaf(format(new Date(m.validFrom), "yyyy-MM-dd"));
+                                                        setGeldigTot(m.validUntil ? format(new Date(m.validUntil), "yyyy-MM-dd") : "");
+                                                        setIndicatieAfgegevenDoor(m.issuedBy || "");
+                                                        setTerugkoppelingAan(m.feedbackTo || "");
+                                                        setKanCombinerenMetGroepsgenoot(m.canCombineWithGroup);
+                                                        setOnderbouwingIndicering(m.description);
+                                                        setBejegeningstips(m.guidanceTips || "");
+                                                        setLeerdoelen(m.learningGoals || "");
+                                                        setShowModal(true);
                                                     }}
-                                                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                    title="Bekijken"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        startEditIndication(m);
-                                                    }}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                                     title="Bewerken"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
+
                                                 <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
+                                                    onClick={() => {
+                                                        setEditingIndication(m);
+                                                        setEvaluationNotes("");
+                                                        setEvaluationAuthor("");
                                                         setShowEvaluationModal(m);
                                                     }}
-                                                    className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-all"
-                                                    title="Evaluatie"
+                                                    className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                                    title="Nieuwe Evaluatie"
                                                 >
                                                     <MessageSquare size={16} />
                                                 </button>
+
+                                                {/* Delete Button */}
                                                 <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleArchiveIndication(m.id);
-                                                    }}
-                                                    className="p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
-                                                    title="Archiveren"
+                                                    onClick={() => handleDelete(m)}
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                    title="Verwijderen"
                                                 >
-                                                    <Archive size={16} />
+                                                    <Trash2 size={16} />
                                                 </button>
+
+                                                {!showArchived ? (
+                                                    <button
+                                                        onClick={() => handleArchive(m.id)}
+                                                        className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                                        title="Archiveren"
+                                                    >
+                                                        <Archive size={16} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleRestore(m.id)}
+                                                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                                        title="Herstellen"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </motion.tr>
@@ -613,25 +812,27 @@ export default function SportIndicationsPage() {
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-6 sticky top-[73px] z-10">
+                        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 sticky top-[73px] z-10 pt-2">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("manual")}
-                                className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "manual"
-                                    ? "text-purple-600 border-b-2 border-purple-600"
-                                    : "text-gray-500 hover:text-gray-700"
+                                className={`flex items - center gap - 2 px - 6 py - 4 font - medium text - sm transition - all relative ${activeTab === "manual"
+                                    ? "text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-purple-50/50 dark:bg-purple-900/10 rounded-t-lg"
+                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-t-lg"
                                     } `}
                             >
+                                <Edit2 size={18} />
                                 Handmatig
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("paste")}
-                                className={`px - 4 py - 3 font - medium text - sm transition - colors relative ${activeTab === "paste"
-                                    ? "text-purple-600 border-b-2 border-purple-600"
-                                    : "text-gray-500 hover:text-gray-700"
+                                className={`flex items - center gap - 2 px - 6 py - 4 font - medium text - sm transition - all relative ${activeTab === "paste"
+                                    ? "text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-purple-50/50 dark:bg-purple-900/10 rounded-t-lg"
+                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-t-lg"
                                     } `}
                             >
+                                <FileText size={18} />
                                 Plak Tekst
                             </button>
                         </div>
@@ -643,85 +844,232 @@ export default function SportIndicationsPage() {
                             </div>
                         )}
 
-                        {/* Manual Tab Content */}
+
+                        {/* Manual Tab Content - NIEUWE STRUCTUUR */}
                         {activeTab === "manual" && (
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                                {/* Rij 1: Naam jongere + Leefgroep */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Groep</label>
-                                        <select
-                                            required
-                                            value={selectedGroup}
-                                            onChange={(e) => setSelectedGroup(e.target.value)}
-                                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                                        >
-                                            <option value="">Selecteer Groep</option>
-                                            {groups?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Naam Jongere</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Naam jongere <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             type="text"
                                             required
-                                            value={youthName}
-                                            onChange={(e) => setYouthName(e.target.value)}
-                                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                                            placeholder="bijv. Jan Jansen"
+                                            value={naamJongere}
+                                            onChange={(e) => setNaamJongere(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                            placeholder="bijv. Pablo de Jeger"
                                         />
                                     </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Leefgroep <span className="text-red-500">*</span>
+                                        </label>
                                         <select
-                                            value={type}
-                                            onChange={(e) => setType(e.target.value)}
-                                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                                            required
+                                            value={leefgroep}
+                                            onChange={(e) => setLeefgroep(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
                                         >
-                                            <option value="CARDIO">Cardio</option>
-                                            <option value="KRACHT">Kracht</option>
-                                            <option value="REVALIDATIE">Revalidatie</option>
-                                            <option value="MEDISCH">Medisch</option>
-                                            <option value="GEDRAG">Gedrag</option>
-                                            <option value="OVERIG">Overig</option>
+                                            <option value="">Selecteer Leefgroep</option>
+                                            {groups?.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Geldig Vanaf</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={validFrom}
-                                            onChange={(e) => setValidFrom(e.target.value)}
-                                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                                        />
+                                </div>
+
+                                {/* Rij 2: Indicatie voor (checkboxes) - ZONDER NAMEN */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Indicatie voor* <span className="text-red-500">*</span>
+                                        <span className="text-xs text-gray-500 ml-2">* zet een X achter welke activiteit van toepassing is</span>
+                                    </label>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={indicatieActiviteiten.includes("Sport")}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setIndicatieActiviteiten([...indicatieActiviteiten, "Sport"]);
+                                                    } else {
+                                                        setIndicatieActiviteiten(indicatieActiviteiten.filter(a => a !== "Sport"));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">Sport</span>
+                                        </label>
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={indicatieActiviteiten.includes("Muziek")}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setIndicatieActiviteiten([...indicatieActiviteiten, "Muziek"]);
+                                                    } else {
+                                                        setIndicatieActiviteiten(indicatieActiviteiten.filter(a => a !== "Muziek"));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">Muziek</span>
+                                        </label>
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={indicatieActiviteiten.includes("Creatief aanbod")}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setIndicatieActiviteiten([...indicatieActiviteiten, "Creatief aanbod"]);
+                                                    } else {
+                                                        setIndicatieActiviteiten(indicatieActiviteiten.filter(a => a !== "Creatief aanbod"));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                                            />
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">Creatief aanbod</span>
+                                        </label>
                                     </div>
                                 </div>
 
+                                {/* Rij 3: Advies/suggestie */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Omschrijving</label>
-                                    <textarea
-                                        required
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        className="w-full p-3 border border-gray-200 rounded-lg h-24 focus:ring-2 focus:ring-purple-500 outline-none"
-                                        placeholder="Bijv. 2x per week cardio..."
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Advies/suggestie betreft inhoud activiteit
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={adviesInhoudActiviteit}
+                                        onChange={(e) => setAdviesInhoudActiviteit(e.target.value)}
+                                        className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        placeholder="bijv. Focus op individuele begeleiding"
                                     />
                                 </div>
 
-                                <div className="pt-4 flex justify-end space-x-3">
+                                {/* Rij 4: Datums (Van - Tot) */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Indicatie afgegeven van <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={geldigVanaf}
+                                            onChange={(e) => setGeldigVanaf(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Tot <span className="text-xs text-gray-500">(optioneel)</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={geldigTot}
+                                            onChange={(e) => setGeldigTot(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Rij 5: Indicatie afgegeven door + Terugkoppeling aan */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Indicatie afgegeven door
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={indicatieAfgegevenDoor}
+                                            onChange={(e) => setIndicatieAfgegevenDoor(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                            placeholder="bijv. Medische Dienst"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Terugkoppelen voortgang aan
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={terugkoppelingAan}
+                                            onChange={(e) => setTerugkoppelingAan(e.target.value)}
+                                            className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                            placeholder="bijv. GW"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Rij 6: Kan gecombineerd worden (toggle) */}
+                                <div>
+                                    <label className="flex items-center space-x-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={kanCombinerenMetGroepsgenoot}
+                                            onChange={(e) => setKanCombinerenMetGroepsgenoot(e.target.checked)}
+                                            className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Kan gecombineerd worden met groepsgenoot met indicatie?
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Rij 7: Onderbouwing indicering (grote textarea) */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Onderbouwing indicering <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        required
+                                        value={onderbouwingIndicering}
+                                        onChange={(e) => setOnderbouwingIndicering(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg h-32 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        placeholder="Uitgebreide onderbouwing van de indicatie..."
+                                    />
+                                </div>
+
+                                {/* Rij 8: Bejegeningstips */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Bejegeningstips in het licht van de diagnostiek
+                                    </label>
+                                    <textarea
+                                        value={bejegeningstips}
+                                        onChange={(e) => setBejegeningstips(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg h-32 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        placeholder="• Geef duidelijke instructies&#10;• Houdt rekening met..."
+                                    />
+                                </div>
+
+                                {/* Rij 9: Leerdoelen */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Leerdoelen <span className="text-xs text-gray-500">(indien van toepassing)</span>
+                                    </label>
+                                    <textarea
+                                        value={leerdoelen}
+                                        onChange={(e) => setLeerdoelen(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg h-24 focus:ring-2 focus:ring-purple-500 outline-none dark:bg-gray-700 dark:text-white"
+                                        placeholder="N.v.t. of specifieke leerdoelen..."
+                                    />
+                                </div>
+
+                                {/* Submit buttons */}
+                                <div className="pt-4 flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-700">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                                        className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                                     >
                                         Annuleren
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center"
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center transition"
                                     >
                                         <CheckCircle size={18} className="mr-2" />
                                         Opslaan
