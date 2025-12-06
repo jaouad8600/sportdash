@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sportdash-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: jaouad
+      POSTGRES_PASSWORD: sportdash
+      POSTGRES_DB: sportdash
+    ports:
+      - "5450:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
